@@ -1,6 +1,7 @@
 using System.Linq;
 using FennecLabs.Instrumentation;
 using FennecLabs.Instrumentation.Result;
+using FennecLabs.TestUtilities;
 using Xunit;
 
 namespace FennecLabs.Instrumentation.Tests

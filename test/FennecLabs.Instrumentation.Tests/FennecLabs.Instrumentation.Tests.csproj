@@ -24,8 +24,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FennecLabs.Instrumentation\FennecLabs.Instrumentation.csproj" />
+    <ProjectReference Include="..\FennecLabs.TestUtilities\FennecLabs.TestUtilities.csproj" />
   </ItemGroup>
 
-  <Import Project="TestProjectRefs.targets" />
+  <Import Project="..\FennecLabs.TestUtilities\TestProjectRefs.targets" />
 
 </Project>
