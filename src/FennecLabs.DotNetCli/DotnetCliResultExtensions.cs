@@ -11,12 +11,19 @@ public static class DotnetCliResultExtensions
             return null;
         }
 
-        var options = new JsonSerializerOptions
+        try
         {
-            PropertyNameCaseInsensitive = true
-        };
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            };
 
-        return JsonSerializer.Deserialize<PackageListResult>(result.StandardOutput, options);
+            return JsonSerializer.Deserialize<PackageListResult>(result.StandardOutput, options);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 }
 

@@ -8,6 +8,7 @@ public record Framework
     public required string FrameworkName { get; init; }
     
     public required List<PackageReference> TopLevelPackages { get; init; }
-    public required List<PackageReference> TransitivePackages { get; init; }
+    
+    public List<PackageReference> TransitivePackages { get; init; } = new();
 }
 

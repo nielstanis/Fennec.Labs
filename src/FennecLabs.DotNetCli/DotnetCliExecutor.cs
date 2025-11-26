@@ -42,5 +42,18 @@ public class DotnetCliExecutor
             StandardError = await errorReader.ReadToEndAsync()
         };
     }
+
+    public static async Task<PackageListResult?> GetPackageListAsync(string projectPath, bool includeTransitive = true, CancellationToken cancellationToken = default)
+    {
+        var arguments = $"list \"{projectPath}\" package";
+        if (includeTransitive)
+        {
+            arguments += " --include-transitive";
+        }
+        arguments += " --format json";
+
+        var result = await ExecuteAsync(arguments, cancellationToken);
+        return result.DeserializePackageList();
+    }
 }
 
