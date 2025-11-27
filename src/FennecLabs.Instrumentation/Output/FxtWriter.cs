@@ -7,15 +7,31 @@ namespace FennecLabs.Instrumentation.Output
     {
         public override async Task<bool> WriteOutputAsync(AssemblyResult assemblyResult)
         {
+            return await WriteOutputAsync(assemblyResult, null);
+        }
+
+        public override async Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string? relativePath)
+        {
             string filename = Path.GetFileNameWithoutExtension(assemblyResult.FilePath);
-           
-            string outputFile = Path.Combine(".fennec", $"{filename}.fxt");
+            
+            string outputDir = Path.Combine(_outputFolder, "fenneclabs");
+            if (!string.IsNullOrWhiteSpace(relativePath))
+            {
+                // Extract directory from relative path (e.g., "lib/net6.0/MyLib.dll" -> "lib/net6.0")
+                var relativeDir = Path.GetDirectoryName(relativePath);
+                if (!string.IsNullOrWhiteSpace(relativeDir))
+                {
+                    outputDir = Path.Combine(outputDir, relativeDir);
+                }
+            }
+            
+            string outputFile = Path.Combine(outputDir, $"{filename}.fxt");
             Console.WriteLine(outputFile);
 
             bool result = true;
             //try
             {
-                EnsureFolderCreated();
+                Directory.CreateDirectory(outputDir);
                 await using (var f = File.CreateText(outputFile))
                 {
                     //for flat file the ordering is important, order by type, methods and sequence of invocation. 

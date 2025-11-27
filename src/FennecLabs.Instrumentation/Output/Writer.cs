@@ -26,6 +26,11 @@ namespace FennecLabs.Instrumentation.Output
         }
 
         public abstract Task<bool> WriteOutputAsync(AssemblyResult assemblyResult);
+        
+        public virtual Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string relativePath)
+        {
+            return WriteOutputAsync(assemblyResult);
+        }
     }
 }
 

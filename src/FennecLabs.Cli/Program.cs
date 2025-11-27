@@ -260,10 +260,10 @@ class Program
             return;
         }
 
-        var writer = WriterFactory.CreateWriter("json", ".fennec");
+        var writer = WriterFactory.CreateWriter("FXT", "fenneclabs");
         await writer.WriteOutputAsync(result);
         
-        Console.WriteLine($"Instrumentation complete. Output written to .fennec folder.");
+        Console.WriteLine($"Instrumentation complete. Output written to fenneclabs folder.");
     }
 
     static async Task InstrumentNuGetPackageAsync(string packageId, string? version)
@@ -318,7 +318,8 @@ class Program
                     }
                     else
                     {
-                        await writer.WriteOutputAsync(result);
+                        // Pass the relative path from the package to preserve folder structure
+                        await writer.WriteOutputAsync(result, dll.Path);
                         Console.WriteLine("✓");
                         successCount++;
                     }
@@ -332,7 +333,7 @@ class Program
 
             Console.WriteLine();
             Console.WriteLine($"Instrumentation complete: {successCount} succeeded, {errorCount} failed.");
-            Console.WriteLine($"Output written to .fennec folder.");
+            Console.WriteLine($"Output written to fenneclabs folder.");
         }
         catch (Exception ex)
         {
