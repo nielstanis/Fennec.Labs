@@ -12,6 +12,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FennecLabs.DotNetCli\FennecLabs.DotNetCli.csproj" />
+    <ProjectReference Include="..\FennecLabs.NuGet\FennecLabs.NuGet.csproj" />
+    <ProjectReference Include="..\FennecLabs.Scorecard\FennecLabs.Scorecard.csproj" />
+    <ProjectReference Include="..\FennecLabs.Instrumentation\FennecLabs.Instrumentation.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Remove="FennecLabs.Instrumentation/**" />
     <None Remove="FennecLabs.Instrumentation/**" />
   </ItemGroup>

@@ -43,14 +43,17 @@ public class DotnetCliExecutor
         };
     }
 
-    public static async Task<PackageListResult?> GetPackageListAsync(string projectPath, bool includeTransitive = true, CancellationToken cancellationToken = default)
+    public static async Task<PackageListResult?> GetPackageListAsync(string projectPath, CancellationToken cancellationToken = default)
     {
-        var arguments = $"list \"{projectPath}\" package";
-        if (includeTransitive)
-        {
-            arguments += " --include-transitive";
-        }
-        arguments += " --format json";
+        var arguments = $"list \"{projectPath}\" package  --include-transitive --format json";
+
+        var result = await ExecuteAsync(arguments, cancellationToken);
+        return result.DeserializePackageList();
+    }
+
+    public static async Task<PackageListResult?> GetPackageListAsync(CancellationToken cancellationToken = default)
+    {
+        var arguments = $"list package  --include-transitive --format json";
 
         var result = await ExecuteAsync(arguments, cancellationToken);
         return result.DeserializePackageList();

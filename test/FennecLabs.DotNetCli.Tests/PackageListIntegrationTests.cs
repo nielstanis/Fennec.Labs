@@ -15,7 +15,7 @@ namespace FennecLabs.DotNetCli.Tests
                 "..", "..", "..", "..", "TestProjects", "BasicMvcApp", "BasicMvcApp.csproj"));
 
             // Act
-            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath, includeTransitive: true);
+            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath);
 
             // Assert
             Assert.NotNull(packageList);
@@ -43,7 +43,7 @@ namespace FennecLabs.DotNetCli.Tests
                 "..", "..", "..", "..", "TestProjects", "BasicMvcApp", "BasicMvcApp.csproj"));
 
             // Act
-            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath, includeTransitive: true);
+            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath);
 
             // Assert
             Assert.NotNull(packageList);
@@ -70,7 +70,7 @@ namespace FennecLabs.DotNetCli.Tests
                 "..", "..", "..", "..", "TestProjects", "BasicMvcApp", "BasicMvcApp.csproj"));
 
             // Act
-            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath, includeTransitive: true);
+            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath);
 
             // Assert
             Assert.NotNull(packageList);

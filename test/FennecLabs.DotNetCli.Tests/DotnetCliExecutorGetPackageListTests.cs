@@ -4,6 +4,10 @@ using Xunit;
 
 namespace FennecLabs.DotNetCli.Tests
 {
+    /// <summary>
+    /// Rewrite Path logic to go through the testresources props.
+    /// Make sure to validate all expected transitive package elements! 
+    /// </summary>
     public class DotnetCliExecutorGetPackageListTests
     {
         [Fact]
@@ -31,14 +35,14 @@ namespace FennecLabs.DotNetCli.Tests
                 "..", "..", "..", "..", "TestProjects", "BasicMvcApp", "BasicMvcApp.csproj"));
 
             // Act
-            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath, includeTransitive: false);
+            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath);
 
             // Assert
             Assert.NotNull(packageList);
             var framework = packageList.Projects[0].Frameworks[0];
             Assert.NotEmpty(framework.TopLevelPackages);
             // Transitive packages should be empty when includeTransitive is false
-            Assert.Empty(framework.TransitivePackages);
+            Assert.NotEmpty(framework.TransitivePackages);
         }
 
         [Fact]
@@ -50,7 +54,7 @@ namespace FennecLabs.DotNetCli.Tests
                 "..", "..", "..", "..", "TestProjects", "BasicMvcApp", "BasicMvcApp.csproj"));
 
             // Act
-            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath, includeTransitive: true);
+            var packageList = await DotnetCliExecutor.GetPackageListAsync(projectPath);
 
             // Assert
             Assert.NotNull(packageList);

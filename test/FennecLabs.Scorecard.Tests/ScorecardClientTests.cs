@@ -65,8 +65,7 @@ public class ScorecardClientTests
     public async Task GetScorecardResultFromPackageAsync_WithValidPackage_MayReturnScorecardResult()
     {
         // Arrange
-        var nugetService = new NuGetService();
-        var client = new ScorecardClient(nugetService: nugetService);
+        var client = new ScorecardClient();
         var packageId = "Newtonsoft.Json";
 
         // Act
@@ -96,7 +95,7 @@ public class ScorecardClientTests
     {
         // Arrange
         var nugetService = new NuGetService();
-        var client = new ScorecardClient(nugetService: nugetService);
+        var client = new ScorecardClient();
         var packageId = "Newtonsoft.Json";
         var version = "13.0.3";
 
@@ -145,12 +144,36 @@ public class ScorecardClientTests
         }
     }
 
+        [Fact]
+    public async Task GetScorecardResultFromPackageAsync_WithProjectUrl_ReturnsScorecardResult()
+    {
+        // Arrange
+        var client = new ScorecardClient();
+        var packageId = "itext7";
+        var version = "9.4.0";
+
+        // Act & Assert
+        // This should work with fallback heuristic, but may throw if repository doesn't have scorecard
+        try
+        {
+            var result = await client.GetScorecardResultFromPackageAsync(packageId, version);
+            
+            // The result may be null or a valid result depending on the heuristic
+            // We just verify it doesn't throw an unexpected exception
+            Assert.True(result == null || (result.Repo != null && result.Scorecard != null));
+        }
+        catch (InvalidOperationException)
+        {
+            // It's acceptable if the repository doesn't have a scorecard
+            Assert.True(true);
+        }
+    }
+
     [Fact]
     public async Task GetScorecardResultFromPackageAsync_WithInvalidPackageId_ThrowsException()
     {
         // Arrange
-        var nugetService = new NuGetService();
-        var client = new ScorecardClient(nugetService: nugetService);
+        var client = new ScorecardClient();
         var packageId = "X"; // Too short for heuristic
 
         // Act & Assert

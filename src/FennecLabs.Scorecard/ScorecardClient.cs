@@ -11,13 +11,13 @@ public class ScorecardClient
     private readonly NuGetService? _nugetService;
     private const string BaseUrl = "https://api.securityscorecards.dev";
 
-    public ScorecardClient(HttpClient? httpClient = null, NuGetService? nugetService = null)
+    public ScorecardClient()
     {
-        _httpClient = httpClient ?? new HttpClient
+        _httpClient = new HttpClient
         {
             BaseAddress = new Uri(BaseUrl)
         };
-        _nugetService = nugetService;
+        _nugetService = new NuGetService();
     }
 
     public async Task<ScorecardResult?> GetScorecardResultAsync(

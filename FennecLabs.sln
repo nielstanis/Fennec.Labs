@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "FennecLabs.Cli", "FennecLabs.Cli", "{E73276BC-2871-4216-3DB0-4BCE21E67570}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FennecLabs", "src\FennecLabs.Cli\FennecLabs.csproj", "{4A8E2EF3-5776-4A7C-99A2-093B1CB2B8AF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FennecLabs", "src\FennecLabs.Cli\Fennec.csproj", "{4A8E2EF3-5776-4A7C-99A2-093B1CB2B8AF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FennecLabs.Instrumentation", "src\FennecLabs.Instrumentation\FennecLabs.Instrumentation.csproj", "{4FEA8EDB-EE7D-419F-8B6B-045DB064BD4F}"
 EndProject

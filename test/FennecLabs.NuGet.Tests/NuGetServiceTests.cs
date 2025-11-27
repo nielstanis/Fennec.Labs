@@ -241,5 +241,20 @@ public class NuGetServiceTests
         await Assert.ThrowsAsync<FileNotFoundException>(async () =>
             await _nugetService.ExtractPackageFileAsync(packageId, invalidFilePath, version));
     }
+
+    [Fact]
+    public async Task GetPackageVersionsAsync_HttpZipStreamNoPackageUrl()
+    {
+        // Arrange
+        var packageId = "httpzipstream";
+
+        // Act
+        var versions = await _nugetService.GetPackageVersionsAsync(packageId);
+
+        // Assert
+        Assert.NotNull(versions);
+        Assert.NotEmpty(versions);
+        Assert.All(versions, v => Assert.NotNull(v));
+    }
 }
 
