@@ -16,6 +16,7 @@
     <ProjectReference Include="..\FennecLabs.NuGet\FennecLabs.NuGet.csproj" />
     <ProjectReference Include="..\FennecLabs.Scorecard\FennecLabs.Scorecard.csproj" />
     <ProjectReference Include="..\FennecLabs.Instrumentation\FennecLabs.Instrumentation.csproj" />
+    <ProjectReference Include="..\FennecLabs.AssemblyDiff\FennecLabs.AssemblyDiff.csproj" />
   </ItemGroup>
 
   <ItemGroup>

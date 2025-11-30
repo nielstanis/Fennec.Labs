@@ -1,10 +1,14 @@
 ﻿using System.CommandLine;
 using System.Diagnostics;
+using System.IO.Compression;
+using FennecLabs.AssemblyDiff;
 using FennecLabs.DotNetCli;
 using FennecLabs.Instrumentation;
 using FennecLabs.Instrumentation.Output;
 using FennecLabs.NuGet;
 using FennecLabs.Scorecard;
+using Mono.Cecil;
+using NuGet.Versioning;
 
 namespace FennecLabs;
 
@@ -78,8 +82,92 @@ class Program
             await GetScorecardsForProjectAsync(projectPath);
         });
 
+        var compareNugetOption = new Option<string>(
+            "--nuget",
+            "-n"
+        )
+        {
+            Description = "NuGet package ID to compare"
+        };
+
+        var compareVersionOption = new Option<string>(
+            "--version",
+            "-v"
+        )
+        {
+            Description = "Version of the NuGet package to compare (optional, uses latest if not specified)"
+        };
+
+        var compareCommand = new Command("compare", "Compare assemblies between two versions of a NuGet package");
+        compareCommand.Options.Add(compareNugetOption);
+        compareCommand.Options.Add(compareVersionOption);
+        compareCommand.SetAction(async (ParseResult parseResult) =>
+        {
+            var nuget = parseResult.GetValue(compareNugetOption);
+            var version = parseResult.GetValue(compareVersionOption);
+
+            if (string.IsNullOrWhiteSpace(nuget))
+            {
+                Console.Error.WriteLine("--nuget is required.");
+                return;
+            }
+
+            await CompareNuGetPackageAsync(nuget, version);
+        });
+
+        var reproduceFilenameOption = new Option<string>(
+            "--filename",
+            "-f"
+        )
+        {
+            Description = "Path to the .nupkg file to compare"
+        };
+
+        var reproduceNugetOption = new Option<string>(
+            "--nuget",
+            "-n"
+        )
+        {
+            Description = "NuGet package ID to compare against"
+        };
+
+        var reproduceVersionOption = new Option<string>(
+            "--version",
+            "-v"
+        )
+        {
+            Description = "Version of the NuGet package to compare against (optional, uses latest if not specified)"
+        };
+
+        var reproduceCommand = new Command("reproduce", "Compare a local .nupkg file with a NuGet package from the feed");
+        reproduceCommand.Options.Add(reproduceFilenameOption);
+        reproduceCommand.Options.Add(reproduceNugetOption);
+        reproduceCommand.Options.Add(reproduceVersionOption);
+        reproduceCommand.SetAction(async (ParseResult parseResult) =>
+        {
+            var filename = parseResult.GetValue(reproduceFilenameOption);
+            var nuget = parseResult.GetValue(reproduceNugetOption);
+            var version = parseResult.GetValue(reproduceVersionOption);
+
+            if (string.IsNullOrWhiteSpace(filename))
+            {
+                Console.Error.WriteLine("--filename is required.");
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(nuget))
+            {
+                Console.Error.WriteLine("--nuget is required.");
+                return;
+            }
+
+            await ReproduceComparisonAsync(filename, nuget, version);
+        });
+
         rootCommand.Subcommands.Add(instrumentCommand);
         rootCommand.Subcommands.Add(scorecardCommand);
+        rootCommand.Subcommands.Add(compareCommand);
+        rootCommand.Subcommands.Add(reproduceCommand);
 
         return await rootCommand.Parse(args).InvokeAsync();
     }
@@ -339,6 +427,403 @@ class Program
         {
             Console.Error.WriteLine($"Error downloading or processing package: {ex.Message}");
         }
+    }
+
+    static async Task CompareNuGetPackageAsync(string packageId, string? version)
+    {
+        Console.WriteLine($"Comparing NuGet package: {packageId}");
+        
+        var nugetService = new NuGetService();
+        
+        try
+        {
+            // Get all versions of the package
+            var allVersions = await nugetService.GetPackageVersionsAsync(packageId, includePrerelease: false);
+            var sortedVersions = allVersions.OrderByDescending(v => v).ToList();
+
+            if (sortedVersions.Count < 2)
+            {
+                Console.WriteLine($"Package '{packageId}' has less than 2 versions. Cannot compare.");
+                return;
+            }
+
+            NuGetVersion? currentVersion = null;
+            NuGetVersion? previousVersion = null;
+
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                if (!NuGetVersion.TryParse(version, out var parsedVersion))
+                {
+                    Console.Error.WriteLine($"Invalid version format: {version}");
+                    return;
+                }
+                currentVersion = parsedVersion;
+
+                // Find the index of the current version
+                var currentIndex = sortedVersions.FindIndex(v => v == currentVersion!);
+                if (currentIndex == -1)
+                {
+                    Console.Error.WriteLine($"Version '{version}' not found for package '{packageId}'");
+                    return;
+                }
+
+                if (currentIndex == sortedVersions.Count - 1)
+                {
+                    Console.Error.WriteLine($"Version '{version}' is the oldest version. Cannot compare with previous version.");
+                    return;
+                }
+
+                previousVersion = sortedVersions[currentIndex + 1];
+            }
+            else
+            {
+                // Use latest and previous latest
+                currentVersion = sortedVersions[0];
+                previousVersion = sortedVersions[1];
+            }
+
+            if (currentVersion == null || previousVersion == null)
+            {
+                Console.Error.WriteLine("Failed to determine versions for comparison.");
+                return;
+            }
+
+            Console.WriteLine($"Comparing version {currentVersion} with previous version {previousVersion}");
+            Console.WriteLine();
+
+            // Download both versions
+            Console.WriteLine($"Downloading version {currentVersion}...");
+            var currentPackagePath = await nugetService.DownloadPackageAsync(packageId, currentVersion.ToNormalizedString());
+            Console.WriteLine($"Downloaded to: {currentPackagePath}");
+
+            Console.WriteLine($"Downloading version {previousVersion}...");
+            var previousPackagePath = await nugetService.DownloadPackageAsync(packageId, previousVersion.ToNormalizedString());
+            Console.WriteLine($"Downloaded to: {previousPackagePath}");
+            Console.WriteLine();
+
+            // Get contents of both packages
+            var currentContents = await nugetService.GetPackageContentsAsync(packageId, currentVersion.ToNormalizedString());
+            var previousContents = await nugetService.GetPackageContentsAsync(packageId, previousVersion.ToNormalizedString());
+
+            // Find DLL files in both packages
+            var currentDlls = currentContents
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                    && !f.Path.Contains("_._"))
+                .ToDictionary(f => f.Path, f => f);
+
+            var previousDlls = previousContents
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                    && !f.Path.Contains("_._"))
+                .ToDictionary(f => f.Path, f => f);
+
+            // Find matching DLLs by relative path
+            var matchingDlls = currentDlls.Keys.Intersect(previousDlls.Keys).ToList();
+            var onlyInCurrent = currentDlls.Keys.Except(previousDlls.Keys).ToList();
+            var onlyInPrevious = previousDlls.Keys.Except(currentDlls.Keys).ToList();
+
+            Console.WriteLine($"Found {matchingDlls.Count} matching DLL file(s) to compare");
+            if (onlyInCurrent.Count > 0)
+            {
+                Console.WriteLine($"  {onlyInCurrent.Count} DLL(s) only in version {currentVersion}");
+            }
+            if (onlyInPrevious.Count > 0)
+            {
+                Console.WriteLine($"  {onlyInPrevious.Count} DLL(s) only in version {previousVersion}");
+            }
+            Console.WriteLine();
+
+            if (matchingDlls.Count == 0)
+            {
+                Console.WriteLine("No matching DLL files found to compare.");
+                return;
+            }
+
+            // Compare each matching DLL
+            int identicalCount = 0;
+            int differentCount = 0;
+            int errorCount = 0;
+
+            foreach (var dllPath in matchingDlls)
+            {
+                Console.WriteLine($"Comparing {dllPath}...");
+                try
+                {
+                    var currentDll = currentDlls[dllPath];
+                    var previousDll = previousDlls[dllPath];
+
+                    using var assembly1 = AssemblyDefinition.ReadAssembly(previousDll.FullPath);
+                    using var assembly2 = AssemblyDefinition.ReadAssembly(currentDll.FullPath);
+
+                    var comparer = new AssemblyComparer(assembly1, assembly2);
+                    var result = comparer.Compare();
+
+                    if (result.AreEqual)
+                    {
+                        Console.WriteLine($"  ✓ Identical");
+                        identicalCount++;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  ✗ Differences found ({result.Differences.Count} difference(s))");
+                        differentCount++;
+
+                        // Show summary
+                        if (result.TypesOnlyInAssembly1.Count > 0)
+                        {
+                            Console.WriteLine($"    - {result.TypesOnlyInAssembly1.Count} type(s) only in {previousVersion}");
+                        }
+                        if (result.TypesOnlyInAssembly2.Count > 0)
+                        {
+                            Console.WriteLine($"    - {result.TypesOnlyInAssembly2.Count} type(s) only in {currentVersion}");
+                        }
+                        if (result.MethodBodyDifferences.Count > 0)
+                        {
+                            Console.WriteLine($"    - {result.MethodBodyDifferences.Count} method(s) with body differences");
+                        }
+
+                        // Show detailed report
+                        Console.WriteLine();
+                        Console.WriteLine("  Detailed Report:");
+                        var report = result.GenerateReport();
+                        foreach (var line in report.Split('\n'))
+                        {
+                            if (!string.IsNullOrWhiteSpace(line))
+                            {
+                                Console.WriteLine($"    {line}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  ✗ Error: {ex.Message}");
+                    errorCount++;
+                }
+                Console.WriteLine();
+            }
+
+            // Summary
+            Console.WriteLine("=== Comparison Summary ===");
+            Console.WriteLine($"Package: {packageId}");
+            Console.WriteLine($"Version {currentVersion} vs {previousVersion}");
+            Console.WriteLine($"  Identical: {identicalCount}");
+            Console.WriteLine($"  Different: {differentCount}");
+            Console.WriteLine($"  Errors: {errorCount}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error comparing package: {ex.Message}");
+        }
+    }
+
+    static async Task ReproduceComparisonAsync(string nupkgFilePath, string packageId, string? version)
+    {
+        if (!File.Exists(nupkgFilePath))
+        {
+            Console.Error.WriteLine($"File not found: {nupkgFilePath}");
+            return;
+        }
+
+        if (!nupkgFilePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.Error.WriteLine($"File must be a .nupkg file: {nupkgFilePath}");
+            return;
+        }
+
+        Console.WriteLine($"Comparing local package file: {nupkgFilePath}");
+        Console.WriteLine($"With NuGet package: {packageId} {version ?? "latest"}");
+        Console.WriteLine();
+
+        var nugetService = new NuGetService();
+        string? tempExtractPath = null;
+
+        try
+        {
+            // Extract the local .nupkg file
+            tempExtractPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            Directory.CreateDirectory(tempExtractPath);
+
+            Console.WriteLine($"Extracting local package to: {tempExtractPath}");
+            await ExtractNupkgFileAsync(nupkgFilePath, tempExtractPath);
+            Console.WriteLine("Extraction complete.");
+            Console.WriteLine();
+
+            // Get DLL files from the extracted .nupkg
+            var localContents = GetPackageContentsFromDirectory(tempExtractPath);
+            var localDlls = localContents
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                    && !f.Path.Contains("_._"))
+                .ToDictionary(f => f.Path, f => f);
+
+            // Download the NuGet package from the feed
+            Console.WriteLine($"Downloading NuGet package: {packageId} {version ?? "latest"}");
+            var feedPackagePath = await nugetService.DownloadPackageAsync(packageId, version);
+            Console.WriteLine($"Downloaded to: {feedPackagePath}");
+            Console.WriteLine();
+
+            // Get DLL files from the downloaded package
+            var feedContents = await nugetService.GetPackageContentsAsync(packageId, version);
+            var feedDlls = feedContents
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                    && !f.Path.Contains("_._"))
+                .ToDictionary(f => f.Path, f => f);
+
+            // Find matching DLLs by relative path
+            var matchingDlls = localDlls.Keys.Intersect(feedDlls.Keys).ToList();
+            var onlyInLocal = localDlls.Keys.Except(feedDlls.Keys).ToList();
+            var onlyInFeed = feedDlls.Keys.Except(localDlls.Keys).ToList();
+
+            Console.WriteLine($"Found {matchingDlls.Count} matching DLL file(s) to compare");
+            if (onlyInLocal.Count > 0)
+            {
+                Console.WriteLine($"  {onlyInLocal.Count} DLL(s) only in local package");
+            }
+            if (onlyInFeed.Count > 0)
+            {
+                Console.WriteLine($"  {onlyInFeed.Count} DLL(s) only in feed package");
+            }
+            Console.WriteLine();
+
+            if (matchingDlls.Count == 0)
+            {
+                Console.WriteLine("No matching DLL files found to compare.");
+                return;
+            }
+
+            // Compare each matching DLL
+            int identicalCount = 0;
+            int differentCount = 0;
+            int errorCount = 0;
+
+            foreach (var dllPath in matchingDlls)
+            {
+                Console.WriteLine($"Comparing {dllPath}...");
+                try
+                {
+                    var localDll = localDlls[dllPath];
+                    var feedDll = feedDlls[dllPath];
+
+                    using var assembly1 = AssemblyDefinition.ReadAssembly(localDll.FullPath);
+                    using var assembly2 = AssemblyDefinition.ReadAssembly(feedDll.FullPath);
+
+                    var comparer = new AssemblyComparer(assembly1, assembly2);
+                    var result = comparer.Compare();
+
+                    if (result.AreEqual)
+                    {
+                        Console.WriteLine($"  ✓ Identical");
+                        identicalCount++;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"  ✗ Differences found ({result.Differences.Count} difference(s))");
+                        differentCount++;
+
+                        // Show summary
+                        if (result.TypesOnlyInAssembly1.Count > 0)
+                        {
+                            Console.WriteLine($"    - {result.TypesOnlyInAssembly1.Count} type(s) only in local package");
+                        }
+                        if (result.TypesOnlyInAssembly2.Count > 0)
+                        {
+                            Console.WriteLine($"    - {result.TypesOnlyInAssembly2.Count} type(s) only in feed package");
+                        }
+                        if (result.MethodBodyDifferences.Count > 0)
+                        {
+                            Console.WriteLine($"    - {result.MethodBodyDifferences.Count} method(s) with body differences");
+                        }
+
+                        // Show detailed report
+                        Console.WriteLine();
+                        Console.WriteLine("  Detailed Report:");
+                        var report = result.GenerateReport();
+                        foreach (var line in report.Split('\n'))
+                        {
+                            if (!string.IsNullOrWhiteSpace(line))
+                            {
+                                Console.WriteLine($"    {line}");
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"  ✗ Error: {ex.Message}");
+                    errorCount++;
+                }
+                Console.WriteLine();
+            }
+
+            // Summary
+            Console.WriteLine("=== Comparison Summary ===");
+            Console.WriteLine($"Local Package: {nupkgFilePath}");
+            Console.WriteLine($"Feed Package: {packageId} {version ?? "latest"}");
+            Console.WriteLine($"  Identical: {identicalCount}");
+            Console.WriteLine($"  Different: {differentCount}");
+            Console.WriteLine($"  Errors: {errorCount}");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Error comparing packages: {ex.Message}");
+        }
+        finally
+        {
+            // Clean up temporary extraction directory
+            if (tempExtractPath != null && Directory.Exists(tempExtractPath))
+            {
+                try
+                {
+                    Directory.Delete(tempExtractPath, recursive: true);
+                }
+                catch
+                {
+                    // Ignore cleanup errors
+                }
+            }
+        }
+    }
+
+    static async Task ExtractNupkgFileAsync(string nupkgFilePath, string extractPath)
+    {
+        using var fileStream = File.OpenRead(nupkgFilePath);
+        using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
+
+        foreach (var entry in archive.Entries)
+        {
+            if (string.IsNullOrEmpty(entry.Name))
+                continue;
+
+            var entryPath = Path.Combine(extractPath, entry.FullName);
+            var entryDirectory = Path.GetDirectoryName(entryPath);
+
+            if (!string.IsNullOrEmpty(entryDirectory))
+            {
+                Directory.CreateDirectory(entryDirectory);
+            }
+
+            using var entryStream = entry.Open();
+            using var fileOutStream = File.Create(entryPath);
+            await entryStream.CopyToAsync(fileOutStream);
+        }
+    }
+
+    static List<PackageFileInfo> GetPackageContentsFromDirectory(string packagePath)
+    {
+        var files = Directory.GetFiles(packagePath, "*", SearchOption.AllDirectories)
+            .Select(f => new FileInfo(f))
+            .OrderBy(f => f.FullName)
+            .ToList();
+
+        return files.Select(f =>
+        {
+            var relativePath = Path.GetRelativePath(packagePath, f.FullName);
+            return new PackageFileInfo
+            {
+                Path = relativePath,
+                FullPath = f.FullName,
+                Size = f.Length
+            };
+        }).ToList();
     }
 
     private class PackageScorecardResult
