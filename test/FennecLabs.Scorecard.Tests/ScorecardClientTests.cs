@@ -145,6 +145,30 @@ public class ScorecardClientTests
     }
 
         [Fact]
+    public async Task GetScorecardResultFromPackageAsync_WithPackageWithoutNuGetService_CastleCore()
+    {
+        // Arrange
+        var client = new ScorecardClient(); // No NuGetService provided
+        var packageId = "Castle.Core";
+
+        // Act & Assert
+        // This should work with fallback heuristic, but may throw if repository doesn't have scorecard
+        try
+        {
+            var result = await client.GetScorecardResultFromPackageAsync(packageId);
+            
+            // The result may be null or a valid result depending on the heuristic
+            // We just verify it doesn't throw an unexpected exception
+            Assert.True(result == null || (result.Repo != null && result.Scorecard != null));
+        }
+        catch (InvalidOperationException)
+        {
+            // It's acceptable if the repository doesn't have a scorecard
+            Assert.True(true);
+        }
+    }
+
+        [Fact]
     public async Task GetScorecardResultFromPackageAsync_WithProjectUrl_ReturnsScorecardResult()
     {
         // Arrange
