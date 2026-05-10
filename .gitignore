@@ -3,6 +3,15 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# Local-only directories
+docs/
+
+# Runtime-generated scorecard cache (refreshed by live tests, not committed)
+test/TestProjects/**/.fennec/
+
+# macOS resource fork files
+._*
+
 # dotenv files
 .env
 

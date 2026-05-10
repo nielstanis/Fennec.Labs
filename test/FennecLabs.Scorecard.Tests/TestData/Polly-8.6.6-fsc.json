@@ -1,0 +1,257 @@
+{
+  "date": "2026-05-10T09:40:55Z",
+  "repo": {
+    "name": "github.com/App-vNext/Polly",
+    "commit": "bb790b9765ba18cacb424e89215bf881a2dab7bd"
+  },
+  "scorecard": {
+    "version": "v5.3.0",
+    "commit": "c22063e786c11f9dd714d777a687ff7c4599b600"
+  },
+  "score": 7.8,
+  "checks": [
+    {
+      "name": "Maintained",
+      "score": 10,
+      "reason": "30 commit(s) and 4 issue activity found in the last 90 days -- score normalized to 10",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project is \"actively maintained\".",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#maintained"
+      }
+    },
+    {
+      "name": "Security-Policy",
+      "score": 10,
+      "reason": "security policy file detected",
+      "details": [
+        "Info: security policy file detected: SECURITY.md:1",
+        "Info: Found linked content: SECURITY.md:1",
+        "Info: Found disclosure, vulnerability, and/or timelines in security policy: SECURITY.md:1",
+        "Info: Found text in security policy: SECURITY.md:1"
+      ],
+      "documentation": {
+        "short": "Determines if the project has published a security policy.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#security-policy"
+      }
+    },
+    {
+      "name": "Code-Review",
+      "score": 0,
+      "reason": "Found 0/5 approved changesets -- score normalized to 0",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project requires human code review before pull requests (aka merge requests) are merged.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#code-review"
+      }
+    },
+    {
+      "name": "Dangerous-Workflow",
+      "score": 10,
+      "reason": "no dangerous workflow patterns detected",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project's GitHub Action workflows avoid dangerous patterns.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#dangerous-workflow"
+      }
+    },
+    {
+      "name": "Dependency-Update-Tool",
+      "score": 10,
+      "reason": "update tool detected",
+      "details": [
+        "Info: detected update tool: Dependabot: .github/dependabot.yml:1"
+      ],
+      "documentation": {
+        "short": "Determines if the project uses a dependency update tool.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#dependency-update-tool"
+      }
+    },
+    {
+      "name": "Binary-Artifacts",
+      "score": 10,
+      "reason": "no binaries found in the repo",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project has generated executable (binary) artifacts in the source repository.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#binary-artifacts"
+      }
+    },
+    {
+      "name": "Token-Permissions",
+      "score": 10,
+      "reason": "GitHub workflow tokens follow principle of least privilege",
+      "details": [
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/build.yml:289",
+        "Info: jobLevel 'actions' permission set to 'read': .github/workflows/build.yml:39",
+        "Warn: jobLevel 'contents' permission set to 'write': .github/workflows/build.yml:40",
+        "Info: jobLevel 'actions' permission set to 'read': .github/workflows/code-ql.yml:20",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/code-ql.yml:21",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/dependabot-approve.yml:13",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/dependency-review.yml:14",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/gh-pages.yml:20",
+        "Info: jobLevel 'actions' permission set to 'read': .github/workflows/lint.yml:28",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/lint.yml:29",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/nuget-packages-published.yml:37",
+        "Warn: jobLevel 'contents' permission set to 'write': .github/workflows/release.yml:22",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/update-dotnet-sdk.yml:14",
+        "Info: jobLevel 'contents' permission set to 'read': .github/workflows/updater-approve.yml:19",
+        "Info: found token with 'none' permissions: .github/workflows/after-release.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/build.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/code-ql.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/dependabot-approve.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/dependency-review.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/gh-pages.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/lint.yml:1",
+        "Info: topLevel 'contents' permission set to 'read': .github/workflows/mutation-tests.yml:21",
+        "Info: found token with 'none' permissions: .github/workflows/nuget-packages-published.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/on-push-do-docs.yml:1",
+        "Info: topLevel permissions set to 'read-all': .github/workflows/ossf-scorecard.yml:10",
+        "Info: found token with 'none' permissions: .github/workflows/release.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/stale.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/update-dotnet-sdk.yml:1",
+        "Info: found token with 'none' permissions: .github/workflows/updater-approve.yml:1"
+      ],
+      "documentation": {
+        "short": "Determines if the project's workflows follow the principle of least privilege.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#token-permissions"
+      }
+    },
+    {
+      "name": "Pinned-Dependencies",
+      "score": 10,
+      "reason": "all dependencies are pinned",
+      "details": [
+        "Info:  54 out of  54 GitHub-owned GitHubAction dependencies pinned",
+        "Info:  15 out of  15 third-party GitHubAction dependencies pinned"
+      ],
+      "documentation": {
+        "short": "Determines if the project has declared and pinned the dependencies of its build process.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#pinned-dependencies"
+      }
+    },
+    {
+      "name": "CII-Best-Practices",
+      "score": 5,
+      "reason": "badge detected: Passing",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project has an OpenSSF (formerly CII) Best Practices Badge.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#cii-best-practices"
+      }
+    },
+    {
+      "name": "Vulnerabilities",
+      "score": 10,
+      "reason": "0 existing vulnerabilities detected",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project has open, known unfixed vulnerabilities.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#vulnerabilities"
+      }
+    },
+    {
+      "name": "Fuzzing",
+      "score": 0,
+      "reason": "project is not fuzzed",
+      "details": [
+        "Warn: no fuzzer integrations found"
+      ],
+      "documentation": {
+        "short": "Determines if the project uses fuzzing.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#fuzzing"
+      }
+    },
+    {
+      "name": "SAST",
+      "score": 10,
+      "reason": "SAST tool is run on all commits",
+      "details": [
+        "Info: SAST configuration detected: CodeQL",
+        "Info: all commits (30) are checked with a SAST tool"
+      ],
+      "documentation": {
+        "short": "Determines if the project uses static code analysis.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#sast"
+      }
+    },
+    {
+      "name": "Branch-Protection",
+      "score": -1,
+      "reason": "internal error: error during branchesHandler.setup: internal error: some github tokens can't read classic branch protection rules: https://github.com/ossf/scorecard-action/blob/main/docs/authentication/fine-grained-auth-token.md",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the default and release branches are protected with GitHub's branch protection settings.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#branch-protection"
+      }
+    },
+    {
+      "name": "License",
+      "score": 10,
+      "reason": "license file detected",
+      "details": [
+        "Info: project has a license file: LICENSE:0",
+        "Info: FSF or OSI recognized license: BSD 3-Clause \"New\" or \"Revised\" License: LICENSE:0"
+      ],
+      "documentation": {
+        "short": "Determines if the project has defined a license.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#license"
+      }
+    },
+    {
+      "name": "Packaging",
+      "score": 10,
+      "reason": "packaging workflow detected",
+      "details": [
+        "Info: Project packages its releases by way of GitHub Actions.: .github/workflows/build.yml:409"
+      ],
+      "documentation": {
+        "short": "Determines if the project is published as a package that others can easily download, install, easily update, and uninstall.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#packaging"
+      }
+    },
+    {
+      "name": "Signed-Releases",
+      "score": 0,
+      "reason": "Project has not signed or included provenance with any releases.",
+      "details": [
+        "Warn: release artifact 8.6.6 not signed: https://api.github.com/repos/App-vNext/Polly/releases/292953784",
+        "Warn: release artifact 8.6.5 not signed: https://api.github.com/repos/App-vNext/Polly/releases/264611281",
+        "Warn: release artifact 8.6.4 not signed: https://api.github.com/repos/App-vNext/Polly/releases/250231493",
+        "Warn: release artifact 8.6.3 not signed: https://api.github.com/repos/App-vNext/Polly/releases/241792368",
+        "Warn: release artifact 8.6.2 not signed: https://api.github.com/repos/App-vNext/Polly/releases/231419101",
+        "Warn: release artifact 8.6.6 does not have provenance: https://api.github.com/repos/App-vNext/Polly/releases/292953784",
+        "Warn: release artifact 8.6.5 does not have provenance: https://api.github.com/repos/App-vNext/Polly/releases/264611281",
+        "Warn: release artifact 8.6.4 does not have provenance: https://api.github.com/repos/App-vNext/Polly/releases/250231493",
+        "Warn: release artifact 8.6.3 does not have provenance: https://api.github.com/repos/App-vNext/Polly/releases/241792368",
+        "Warn: release artifact 8.6.2 does not have provenance: https://api.github.com/repos/App-vNext/Polly/releases/231419101"
+      ],
+      "documentation": {
+        "short": "Determines if the project cryptographically signs release artifacts.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#signed-releases"
+      }
+    },
+    {
+      "name": "CI-Tests",
+      "score": 10,
+      "reason": "30 out of 30 merged PRs checked by a CI test -- score normalized to 10",
+      "details": null,
+      "documentation": {
+        "short": "Determines if the project runs tests before pull requests are merged.",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#ci-tests"
+      }
+    },
+    {
+      "name": "Contributors",
+      "score": 10,
+      "reason": "project has 25 contributing companies or organizations",
+      "details": [
+        "Info: found contributions from: App-vNext, DrivingThru, FluentDateTime, Fody, LearningLine, NServiceBusCommunity, OrleansContrib, Polly-Contrib, RentVillas, VerifyTests, abl - the problem solver, app-vnext, aspnet-contrib, costellorg, crayon, dotnet, dotnet-foundation, drivingthru, grafana, mdedotnet-community, microsoft, msmvps, ngenerics, open-telemetry, pmcau"
+      ],
+      "documentation": {
+        "short": "Determines if the project has a set of contributors from multiple organizations (e.g., companies).",
+        "url": "https://github.com/ossf/scorecard/blob/c22063e786c11f9dd714d777a687ff7c4599b600/docs/checks.md#contributors"
+      }
+    }
+  ]
+}

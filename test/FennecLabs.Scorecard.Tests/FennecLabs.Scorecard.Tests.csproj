@@ -21,6 +21,18 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\FennecLabs.Scorecard\FennecLabs.Scorecard.csproj" />
     <ProjectReference Include="..\..\src\FennecLabs.NuGet\FennecLabs.NuGet.csproj" />
+    <ProjectReference Include="..\..\src\FennecLabs.DotNetCli\FennecLabs.DotNetCli.csproj" />
+    <ProjectReference Include="..\FennecLabs.TestUtilities\FennecLabs.TestUtilities.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="TestData\**\*" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <TestProject Include="..\TestProjects\PollyAwsMvcApp\PollyAwsMvcApp.csproj" />
+  </ItemGroup>
+
+  <Import Project="..\FennecLabs.TestUtilities\TestProjectRefs.targets" />
 
 </Project>
