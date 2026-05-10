@@ -4,6 +4,7 @@ using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
 using System.IO.Compression;
+using System.Xml.Linq;
 
 namespace FennecLabs.NuGet;
 
@@ -376,6 +377,152 @@ public class NuGetService
         using var entryStream = entry.Open();
         using var reader = new StreamReader(entryStream);
         return await reader.ReadToEndAsync();
+    }
+
+    public async Task<string?> GetPackageNuspecContentAsync(
+        string packageId,
+        string? version = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Try to find the nuspec file in the package
+            // The nuspec file is typically named {packageId}.nuspec
+            var nuspecFileName = $"{packageId}.nuspec";
+            
+            // First try to get it from an already extracted package
+            var globalPackagesFolder = GetGlobalPackagesFolder();
+            var repository = await GetRepositoryAsync(cancellationToken);
+            var metadataResource = await repository.GetResourceAsync<PackageMetadataResource>(cancellationToken);
+            var cacheContext = new SourceCacheContext();
+
+            var packages = await metadataResource.GetMetadataAsync(
+                packageId,
+                includePrerelease: true,
+                includeUnlisted: false,
+                cacheContext,
+                NullLogger.Instance,
+                cancellationToken);
+
+            IPackageSearchMetadata? targetPackage;
+            if (!string.IsNullOrEmpty(version))
+            {
+                if (NuGetVersion.TryParse(version, out var parsedVersion))
+                {
+                    targetPackage = packages.FirstOrDefault(p => p.Identity.Version.Equals(parsedVersion));
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            else
+            {
+                targetPackage = packages.OrderByDescending(p => p.Identity.Version).FirstOrDefault();
+            }
+
+            if (targetPackage == null)
+            {
+                return null;
+            }
+
+            var packagePath = Path.Combine(globalPackagesFolder, targetPackage.Identity.Id.ToLowerInvariant(), targetPackage.Identity.Version.ToNormalizedString());
+
+            // Check if package is already extracted
+            if (Directory.Exists(packagePath))
+            {
+                var nuspecPath = Path.Combine(packagePath, nuspecFileName);
+                if (File.Exists(nuspecPath))
+                {
+                    return await File.ReadAllTextAsync(nuspecPath, cancellationToken);
+                }
+
+                // Try case-insensitive search
+                var files = Directory.GetFiles(packagePath, "*.nuspec", SearchOption.TopDirectoryOnly);
+                if (files.Length > 0)
+                {
+                    return await File.ReadAllTextAsync(files[0], cancellationToken);
+                }
+            }
+
+            // Package not extracted, need to download and extract nuspec from stream
+            var downloadResource = await repository.GetResourceAsync<DownloadResource>(cancellationToken);
+            var downloadResult = await downloadResource.GetDownloadResourceResultAsync(
+                targetPackage.Identity,
+                new PackageDownloadContext(cacheContext),
+                globalPackagesFolder,
+                NullLogger.Instance,
+                cancellationToken);
+
+            if (downloadResult.Status != DownloadResourceResultStatus.Available || downloadResult.PackageStream == null)
+            {
+                return null;
+            }
+
+            // Extract nuspec from the package stream
+            using var archive = new ZipArchive(downloadResult.PackageStream, ZipArchiveMode.Read);
+            
+            // Try exact match first
+            var entry = archive.Entries.FirstOrDefault(e =>
+                string.Equals(e.FullName, nuspecFileName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(e.Name, nuspecFileName, StringComparison.OrdinalIgnoreCase));
+
+            // If not found, try any .nuspec file
+            if (entry == null)
+            {
+                entry = archive.Entries.FirstOrDefault(e => e.Name.EndsWith(".nuspec", StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (entry == null)
+            {
+                return null;
+            }
+
+            using var entryStream = entry.Open();
+            using var reader = new StreamReader(entryStream);
+            return await reader.ReadToEndAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static string? ExtractRepositoryUrlFromNuspec(string nuspecContent)
+    {
+        if (string.IsNullOrWhiteSpace(nuspecContent))
+        {
+            return null;
+        }
+
+        try
+        {
+            var doc = XDocument.Parse(nuspecContent);
+            var ns = doc.Root?.GetDefaultNamespace() ?? XNamespace.None;
+            
+            // Find repository element - it can be in different locations
+            // Try under metadata/repository
+            var repositoryElement = doc.Descendants()
+                .FirstOrDefault(e => e.Name.LocalName.Equals("repository", StringComparison.OrdinalIgnoreCase));
+
+            if (repositoryElement == null)
+            {
+                return null;
+            }
+
+            // Get the url attribute
+            var urlAttribute = repositoryElement.Attribute("url");
+            if (urlAttribute != null && !string.IsNullOrWhiteSpace(urlAttribute.Value))
+            {
+                return urlAttribute.Value;
+            }
+
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
 

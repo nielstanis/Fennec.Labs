@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FennecLabs.AssemblyDiff/FennecLabs.AssemblyDiff.csproj" />
+    <Project Path="src/FennecLabs.DotNetCli/FennecLabs.DotNetCli.csproj" />
+    <Project Path="src/FennecLabs.Instrumentation/FennecLabs.Instrumentation.csproj" />
+    <Project Path="src/FennecLabs.NuGet/FennecLabs.NuGet.csproj" />
+    <Project Path="src/FennecLabs.Scorecard/FennecLabs.Scorecard.csproj" />
+  </Folder>
+  <Folder Name="/src/FennecLabs.Cli/">
+    <Project Path="src/FennecLabs.Cli/Fennec.csproj" />
+  </Folder>
+</Solution>

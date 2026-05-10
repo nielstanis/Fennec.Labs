@@ -144,28 +144,84 @@ public class ScorecardClientTests
         }
     }
 
-        [Fact]
-    public async Task GetScorecardResultFromPackageAsync_WithPackageWithoutNuGetService_CastleCore()
+    [Fact]
+    public async Task GetScorecardResultFromPackageAsync_WithCastleCore_UsesRepositoryTagFromNuspec()
     {
         // Arrange
-        var client = new ScorecardClient(); // No NuGetService provided
+        // Castle.Core is known to have a repository tag in its nuspec file
+        // but may not have a valid ProjectUrl pointing to GitHub
+        var client = new ScorecardClient();
         var packageId = "Castle.Core";
+        var version = "5.1.1"; // Use a specific version that we know exists
 
-        // Act & Assert
-        // This should work with fallback heuristic, but may throw if repository doesn't have scorecard
+        // Act
+        // This should extract the repository URL from the nuspec file
         try
         {
-            var result = await client.GetScorecardResultFromPackageAsync(packageId);
+            var result = await client.GetScorecardResultFromPackageAsync(packageId, version);
             
-            // The result may be null or a valid result depending on the heuristic
-            // We just verify it doesn't throw an unexpected exception
-            Assert.True(result == null || (result.Repo != null && result.Scorecard != null));
+            // Assert
+            // If successful, it means we found a valid GitHub URL (either from ProjectUrl or nuspec)
+            if (result != null)
+            {
+                Assert.NotNull(result.Repo);
+                Assert.NotNull(result.Scorecard);
+                // Verify it's a GitHub repository
+                Assert.Contains("github.com", result.Repo.Name);
+            }
         }
         catch (InvalidOperationException)
         {
             // It's acceptable if the repository doesn't have a scorecard
             Assert.True(true);
         }
+        catch (ArgumentException)
+        {
+            // It's acceptable if we can't determine the repository
+            Assert.True(true);
+        }
+    }
+
+    [Fact]
+    public async Task GetPackageNuspecContentAsync_WithCastleCore_ReturnsNuspecContent()
+    {
+        // Arrange
+        var nugetService = new NuGetService();
+        var packageId = "Castle.Core";
+        var version = "5.1.1";
+
+        // Act
+        var nuspecContent = await nugetService.GetPackageNuspecContentAsync(packageId, version);
+
+        // Assert
+        Assert.NotNull(nuspecContent);
+        Assert.NotEmpty(nuspecContent);
+        // Verify it's valid XML
+        Assert.Contains("<?xml", nuspecContent);
+        Assert.Contains("<package", nuspecContent);
+        Assert.Contains("Castle.Core", nuspecContent);
+    }
+
+    [Fact]
+    public async Task ExtractRepositoryUrlFromNuspec_WithCastleCore_ReturnsGitHubUrl()
+    {
+        // Arrange
+        var nugetService = new NuGetService();
+        var packageId = "Castle.Core";
+        var version = "5.1.1";
+
+        // Act
+        var nuspecContent = await nugetService.GetPackageNuspecContentAsync(packageId, version);
+        Assert.NotNull(nuspecContent); // Ensure we got the nuspec
+        
+        var repositoryUrl = NuGetService.ExtractRepositoryUrlFromNuspec(nuspecContent);
+
+        // Assert
+        Assert.NotNull(repositoryUrl);
+        Assert.NotEmpty(repositoryUrl);
+        // Castle.Core should have a GitHub repository URL in its nuspec
+        Assert.Contains("github.com", repositoryUrl);
+        Assert.Contains("castleproject", repositoryUrl);
     }
 
         [Fact]

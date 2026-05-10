@@ -70,6 +70,21 @@ public class ScorecardClient
                     return await GetScorecardResultAsync(platform, org, repo, commit: null, cancellationToken);
                 }
             }
+
+            // Fallback: Try to get repository URL from nuspec file
+            var nuspecContent = await _nugetService.GetPackageNuspecContentAsync(packageId, version, cancellationToken);
+            if (!string.IsNullOrWhiteSpace(nuspecContent))
+            {
+                var repositoryUrl = NuGetService.ExtractRepositoryUrlFromNuspec(nuspecContent);
+                if (!string.IsNullOrWhiteSpace(repositoryUrl))
+                {
+                    var (platform, org, repo) = ParseRepositoryUrl(repositoryUrl);
+                    if (platform != null && org != null && repo != null)
+                    {
+                        return await GetScorecardResultAsync(platform, org, repo, commit: null, cancellationToken);
+                    }
+                }
+            }
         }
 
         // Fallback: Try to infer from package ID (heuristic)

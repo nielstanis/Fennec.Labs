@@ -217,7 +217,7 @@ public class NuGetServiceTests
         // Arrange
         var packageId = "Newtonsoft.Json";
         var version = "13.0.3";
-        var filePath = "Newtonsoft.Json.nuspec";
+        var filePath = "newtonsoft.json.nuspec";
 
         // Act
         var content = await _nugetService.ExtractPackageFileAsync(packageId, filePath, version);
