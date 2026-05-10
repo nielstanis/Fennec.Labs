@@ -27,6 +27,10 @@
         <_Parameter1>%(_ResolvedTestProjectReference.FileName)</_Parameter1>
         <_Parameter2>%(_ResolvedTestProjectReference.RootDir)%(_ResolvedTestProjectReference.Directory)%(_ResolvedTestProjectReference.FileName).dll</_Parameter2>
       </AssemblyAttribute>
+      <AssemblyAttribute Include="FennecLabs.TestUtilities.TestProjectCsprojAttribute">
+        <_Parameter1>%(TestProject.FileName)</_Parameter1>
+        <_Parameter2>%(TestProject.FullPath)</_Parameter2>
+      </AssemblyAttribute>
     </ItemGroup>
 
     <MSBuild Projects="@(PublishedTestProject)"
