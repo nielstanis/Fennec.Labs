@@ -14,7 +14,7 @@ namespace FennecLabs.Instrumentation.Output
         {
             string filename = Path.GetFileNameWithoutExtension(assemblyResult.FilePath);
             
-            string outputDir = Path.Combine(_outputFolder, "fenneclabs");
+            string outputDir = _outputFolder;
             if (!string.IsNullOrWhiteSpace(relativePath))
             {
                 // Extract directory from relative path (e.g., "lib/net6.0/MyLib.dll" -> "lib/net6.0")

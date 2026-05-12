@@ -42,23 +42,34 @@ class Program
             Description = "Version of the NuGet package (optional, uses latest if not specified)"
         };
 
+        var outputOption = new Option<string>(
+            "--output",
+            "-o"
+        )
+        {
+            Description = "Output folder for instrumentation results (default: .fennec)",
+            DefaultValueFactory = _ => ".fennec"
+        };
+
         var instrumentCommand = new Command("instrument", "Instrument assembly files or NuGet packages");
         instrumentCommand.Options.Add(filenameOption);
         instrumentCommand.Options.Add(nugetOption);
         instrumentCommand.Options.Add(versionOption);
+        instrumentCommand.Options.Add(outputOption);
         instrumentCommand.SetAction(async (ParseResult parseResult) =>
         {
             var filename = parseResult.GetValue(filenameOption);
             var nuget = parseResult.GetValue(nugetOption);
             var version = parseResult.GetValue(versionOption);
+            var output = parseResult.GetValue(outputOption) ?? ".fennec";
 
             if (!string.IsNullOrWhiteSpace(nuget))
             {
-                await InstrumentNuGetPackageAsync(nuget, version);
+                await InstrumentNuGetPackageAsync(nuget, version, output);
             }
             else if (!string.IsNullOrWhiteSpace(filename))
             {
-                await InstrumentAssemblyAsync(filename);
+                await InstrumentAssemblyAsync(filename, output);
             }
             else
             {
@@ -771,7 +782,7 @@ class Program
             .Replace("'", "&#39;");
     }
 
-    static async Task InstrumentAssemblyAsync(string filename)
+    static async Task InstrumentAssemblyAsync(string filename, string output)
     {
         if (!File.Exists(filename))
         {
@@ -780,7 +791,7 @@ class Program
         }
 
         Console.WriteLine($"Instrumenting assembly: {filename}");
-        
+
         var analyzer = new AssemblyAnalyzer(filename);
         var result = analyzer.Analyse();
 
@@ -790,13 +801,13 @@ class Program
             return;
         }
 
-        var writer = WriterFactory.CreateWriter("FXT", "fenneclabs");
+        var writer = WriterFactory.CreateWriter("FXT", output);
         await writer.WriteOutputAsync(result);
-        
-        Console.WriteLine($"Instrumentation complete. Output written to fenneclabs folder.");
+
+        Console.WriteLine($"Instrumentation complete. Output written to {output}/");
     }
 
-    static async Task InstrumentNuGetPackageAsync(string packageId, string? version)
+    static async Task InstrumentNuGetPackageAsync(string packageId, string? version, string output)
     {
         Console.WriteLine($"Downloading NuGet package: {packageId} {version ?? "latest"}");
         
@@ -828,8 +839,12 @@ class Program
             }
             Console.WriteLine();
 
+            // Scope output under packageId/resolvedVersion so multiple packages and versions don't collide
+            var resolvedVersion = Path.GetFileName(packagePath);
+            var packageOutput = Path.Combine(output, packageId, resolvedVersion);
+
             // Instrument each DLL
-            var writer = WriterFactory.CreateWriter("FXT", ".");
+            var writer = WriterFactory.CreateWriter("FXT", packageOutput);
             int successCount = 0;
             int errorCount = 0;
 
@@ -863,7 +878,7 @@ class Program
 
             Console.WriteLine();
             Console.WriteLine($"Instrumentation complete: {successCount} succeeded, {errorCount} failed.");
-            Console.WriteLine($"Output written to fenneclabs folder.");
+            Console.WriteLine($"Output written to {packageOutput}/");
         }
         catch (Exception ex)
         {
