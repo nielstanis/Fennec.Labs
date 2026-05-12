@@ -26,6 +26,7 @@
   <ItemGroup>
     <TestProject Include="..\TestProjects\BasicMvcApp\BasicMvcApp.csproj" />
     <TestProject Include="..\TestProjects\PollyAwsMvcApp\PollyAwsMvcApp.csproj" />
+    <TestProject Include="..\TestProjects\AnotherWebApp\Web.csproj" />
   </ItemGroup>
 
   <Import Project="..\FennecLabs.TestUtilities\TestProjectRefs.targets" />

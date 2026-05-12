@@ -206,24 +206,24 @@ class Program
 
         var framework = project.Frameworks[0];
         var topLevelPackages = framework.TopLevelPackages;
+        var transitivePackages = framework.TransitivePackages;
+        var allPackages = topLevelPackages.Concat(transitivePackages).ToList();
 
-        if (topLevelPackages.Count == 0)
+        if (allPackages.Count == 0)
         {
-            Console.WriteLine("No top-level packages found in the project.");
+            Console.WriteLine("No packages found in the project.");
             return;
         }
 
-        Console.WriteLine($"Found {topLevelPackages.Count} top-level package(s):");
+        Console.WriteLine($"Found {topLevelPackages.Count} top-level and {transitivePackages.Count} transitive package(s):");
         Console.WriteLine();
 
-        // Initialize services
-        //var nugetService = new NuGetService();
         var scorecardClient = new ScorecardClient();
 
         // Process each package
         var results = new List<PackageScorecardResult>();
 
-        foreach (var package in topLevelPackages)
+        foreach (var package in allPackages)
         {
             Console.Write($"Processing {package.Id} {package.ResolvedVersion}... ");
             
