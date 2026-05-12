@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Scorecard command now fetches scores for transitive dependencies in addition to top-level packages, surfacing the full dependency graph's security posture (FD-004)
 - Add offline scorecard fixture JSON and live integration tests for PollyAwsMvcApp packages, with Category=Live tagging for CI filter support (FD-003)
 - Add PollyAwsMvcApp test fixture (Polly + AWSSDK.Core) with exact transitive package assertions and TestProjectCsprojAttribute for reliable csproj path resolution (FD-002)
 
