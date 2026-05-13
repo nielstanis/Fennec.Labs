@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Http;
 using FennecLabs.NuGet;
 using FennecLabs.Scorecard;
 using Xunit;
@@ -305,5 +307,101 @@ public class ScorecardClientTests
     {
         Assert.Null(NuGetService.ExtractRepositoryUrlFromNuspec(""));
         Assert.Null(NuGetService.ExtractRepositoryUrlFromNuspec("   "));
+    }
+
+    [Fact]
+    public async Task GetScorecardResultAsync_WithInjectedHttpClient_ReturnsParsedResult()
+    {
+        const string payload = """
+            {
+              "date": "2024-01-15",
+              "repo": { "name": "github.com/ossf/scorecard", "commit": "abc123" },
+              "scorecard": { "version": "4.13.0", "commit": "def456" },
+              "score": 8.3,
+              "checks": [
+                {
+                  "name": "Binary-Artifacts",
+                  "score": 10,
+                  "reason": "no binaries found in the repo",
+                  "details": [],
+                  "documentation": { "short": "Checks for binaries", "url": "https://example.com" }
+                }
+              ]
+            }
+            """;
+
+        var handler = new FakeScorecardHttpMessageHandler(HttpStatusCode.OK, payload);
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.securityscorecards.dev") };
+        using var client = new ScorecardClient(httpClient: httpClient, nugetService: null);
+
+        var result = await client.GetScorecardResultAsync("github.com", "ossf", "scorecard");
+
+        Assert.NotNull(result);
+        Assert.Equal("2024-01-15", result.Date);
+        Assert.Equal("github.com/ossf/scorecard", result.Repo.Name);
+        Assert.Equal(8.3m, result.Score);
+        Assert.Single(result.Checks);
+        Assert.Equal("Binary-Artifacts", result.Checks[0].Name);
+        Assert.Equal(10, result.Checks[0].Score);
+    }
+
+    [Fact]
+    public async Task GetScorecardResultAsync_WhenServerReturnsNotFound_ThrowsInvalidOperationException()
+    {
+        var handler = new FakeScorecardHttpMessageHandler(HttpStatusCode.NotFound, "Not Found");
+        using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.securityscorecards.dev") };
+        using var client = new ScorecardClient(httpClient: httpClient, nugetService: null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => client.GetScorecardResultAsync("github.com", "nobody", "norepo"));
+    }
+
+    [Fact]
+    public void ScorecardClient_ImplementsIDisposable()
+    {
+        // Internally-created HttpClient should be disposed without error
+        var client = new ScorecardClient();
+        client.Dispose();
+    }
+
+    [Fact]
+    public void ScorecardClient_WithInjectedHttpClient_DoesNotDisposeIt()
+    {
+        // Injected HttpClient must not be disposed by ScorecardClient
+        var handler = new FakeScorecardHttpMessageHandler(HttpStatusCode.OK, "{}");
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.securityscorecards.dev") };
+
+        var client = new ScorecardClient(httpClient: httpClient, nugetService: null);
+        client.Dispose();
+
+        // If the injected client were disposed, Send would throw ObjectDisposedException
+        var ex = Record.Exception(() => httpClient.GetAsync("https://api.securityscorecards.dev/").GetAwaiter().GetResult());
+        Assert.Null(ex);
+
+        httpClient.Dispose();
+    }
+
+    /// <summary>Returns a fixed HTTP response for all requests.</summary>
+    private sealed class FakeScorecardHttpMessageHandler : HttpMessageHandler
+    {
+        private readonly HttpStatusCode _statusCode;
+        private readonly string _content;
+
+        public FakeScorecardHttpMessageHandler(HttpStatusCode statusCode, string content)
+        {
+            _statusCode = statusCode;
+            _content = content;
+        }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            var response = new HttpResponseMessage(_statusCode)
+            {
+                Content = new StringContent(_content, System.Text.Encoding.UTF8, "application/json")
+            };
+            return Task.FromResult(response);
+        }
     }
 }

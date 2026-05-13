@@ -96,7 +96,6 @@ namespace FennecLabs.Instrumentation.Tests
         [Fact]
         public async Task WriteOutputAsync_WhenDirectoryCreationFails_PropagatesException()
         {
-            // Place a file where JsonWriter would try to create a subdirectory
             var blockingFile = Path.Combine(_tempDir, "sub");
             await File.WriteAllTextAsync(blockingFile, "I am a file");
 

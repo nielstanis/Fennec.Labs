@@ -9,4 +9,7 @@
   <Folder Name="/src/FennecLabs.Cli/">
     <Project Path="src/FennecLabs.Cli/Fennec.csproj" />
   </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/FennecLabs.AssemblyDiff.Tests/FennecLabs.AssemblyDiff.Tests.csproj" />
+  </Folder>
 </Solution>

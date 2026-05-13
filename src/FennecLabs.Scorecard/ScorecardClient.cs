@@ -5,19 +5,45 @@ using FennecLabs.NuGet;
 
 namespace FennecLabs.Scorecard;
 
-public class ScorecardClient
+public class ScorecardClient : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly NuGetService? _nugetService;
+    private readonly bool _ownsHttpClient;
     private const string BaseUrl = "https://api.securityscorecards.dev";
 
-    public ScorecardClient()
+    /// <summary>
+    /// Creates a <see cref="ScorecardClient"/> with optional dependency injection.
+    /// </summary>
+    /// <param name="httpClient">
+    /// Optional pre-configured <see cref="HttpClient"/>. If null, a default instance is created
+    /// with <see cref="BaseUrl"/> as the base address. The injected client is never disposed by
+    /// this class; only internally created clients are disposed.
+    /// </param>
+    /// <param name="nugetService">
+    /// Optional <see cref="NuGetService"/> used for package metadata lookups. If null, a default
+    /// instance is created.
+    /// </param>
+    public ScorecardClient(HttpClient? httpClient = null, NuGetService? nugetService = null)
     {
-        _httpClient = new HttpClient
+        if (httpClient is null)
         {
-            BaseAddress = new Uri(BaseUrl)
-        };
-        _nugetService = new NuGetService();
+            _httpClient = new HttpClient { BaseAddress = new Uri(BaseUrl) };
+            _ownsHttpClient = true;
+        }
+        else
+        {
+            _httpClient = httpClient;
+            _ownsHttpClient = false;
+        }
+
+        _nugetService = nugetService ?? new NuGetService();
+    }
+
+    public void Dispose()
+    {
+        if (_ownsHttpClient)
+            _httpClient.Dispose();
     }
 
     public async Task<ScorecardResult?> GetScorecardResultAsync(
@@ -28,7 +54,7 @@ public class ScorecardClient
         CancellationToken cancellationToken = default)
     {
         var url = $"/projects/{Uri.EscapeDataString(platform)}/{Uri.EscapeDataString(org)}/{Uri.EscapeDataString(repo)}";
-        
+
         if (!string.IsNullOrEmpty(commit))
         {
             url += $"?commit={Uri.EscapeDataString(commit)}";
@@ -72,7 +98,8 @@ public class ScorecardClient
             }
 
             // Fallback: Try to get repository URL from nuspec file
-            var nuspecContent = await _nugetService.GetPackageNuspecContentAsync(packageId, version, cancellationToken);
+            var nuspecContent = await _nugetService.GetPackageNuspecContentAsync(
+                packageId, version, cancellationToken);
             if (!string.IsNullOrWhiteSpace(nuspecContent))
             {
                 var repositoryUrl = NuGetService.ExtractRepositoryUrlFromNuspec(nuspecContent);
@@ -109,4 +136,3 @@ public class ScorecardClient
         return (null, null, null);
     }
 }
-
