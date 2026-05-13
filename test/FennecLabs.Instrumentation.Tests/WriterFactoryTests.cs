@@ -29,11 +29,9 @@ namespace FennecLabs.Instrumentation.Tests
         }
 
         [Fact]
-        public void CreateWriter_WithUnknownType_ReturnsFxtWriter()
+        public void CreateWriter_WithUnknownType_ThrowsArgumentException()
         {
-            var writer = WriterFactory.CreateWriter("sarif", "/tmp");
-
-            Assert.IsType<FxtWriter>(writer);
+            Assert.Throws<ArgumentException>(() => WriterFactory.CreateWriter("sarif", "/tmp"));
         }
     }
 }

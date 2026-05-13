@@ -21,7 +21,7 @@ namespace FennecLabs.Instrumentation.Tests
         private static AssemblyResult MakeResult(string filePath = "Test.dll")
         {
             var result = new AssemblyResult("Test.Assembly, Version=1.0.0.0", filePath);
-            var type = new ClassTypeResult("MyNamespace.MyClass", filePath);
+            var type = new ClassTypeResult("MyNamespace.MyClass");
             var method = new MethodResult("MyMethod", "x");
             method.Invocations.Add(new InvocationResult("System.Console::WriteLine", "System.Void", 0));
             type.Methods.Add(method);

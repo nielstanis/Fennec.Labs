@@ -11,18 +11,7 @@ namespace FennecLabs.Instrumentation.Output
 
         public override async Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string? relativePath)
         {
-            string filename = Path.GetFileNameWithoutExtension(assemblyResult.FilePath);
-
-            string outputDir = _outputFolder;
-            if (!string.IsNullOrWhiteSpace(relativePath))
-            {
-                var relativeDir = Path.GetDirectoryName(relativePath);
-                if (!string.IsNullOrWhiteSpace(relativeDir))
-                    outputDir = Path.Combine(outputDir, relativeDir);
-            }
-
-            string outputFile = Path.Combine(outputDir, $"{filename}.fxt");
-            Directory.CreateDirectory(outputDir);
+            string outputFile = ResolveOutputPath(assemblyResult.FilePath, relativePath, "fxt");
 
             await using var f = File.CreateText(outputFile);
             foreach (var t in assemblyResult.Types.OrderBy(x => x.ClassType))

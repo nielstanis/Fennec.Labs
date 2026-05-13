@@ -20,7 +20,7 @@ namespace FennecLabs.Instrumentation.Tests
         private static AssemblyResult MakeResult(string filePath = "Test.dll")
         {
             var result = new AssemblyResult("Test.Assembly, Version=1.0.0.0", filePath);
-            var type = new ClassTypeResult("MyNamespace.MyClass", filePath);
+            var type = new ClassTypeResult("MyNamespace.MyClass");
             var method = new MethodResult("MyMethod", "x");
             method.Invocations.Add(new InvocationResult("System.Console::WriteLine", "System.Void", 0));
             type.Methods.Add(method);
@@ -75,7 +75,7 @@ namespace FennecLabs.Instrumentation.Tests
         public async Task WriteOutputAsync_MultipleInvocations_WritesOneLine_PerInvocation()
         {
             var result = new AssemblyResult("Test.Assembly", "Multi.dll");
-            var type = new ClassTypeResult("A.B", "Multi.dll");
+            var type = new ClassTypeResult("A.B");
             var method = new MethodResult("Go", "");
             method.Invocations.Add(new InvocationResult("X::Foo", "void", 0));
             method.Invocations.Add(new InvocationResult("Y::Bar", "void", 1));

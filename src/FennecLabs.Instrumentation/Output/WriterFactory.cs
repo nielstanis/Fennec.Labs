@@ -4,12 +4,15 @@ namespace FennecLabs.Instrumentation.Output
     {
         public static Writer CreateWriter(string writerType, string output)
         {
-            Writer res = new FxtWriter(output);
-            if (writerType.ToLower().Trim()=="json")
-            {
-                res = new JsonWriter(output);
-            }
-            return res;
+            if (string.Equals(writerType, "json", StringComparison.OrdinalIgnoreCase))
+                return new JsonWriter(output);
+
+            if (string.Equals(writerType, "fxt", StringComparison.OrdinalIgnoreCase))
+                return new FxtWriter(output);
+
+            throw new ArgumentException(
+                $"Unknown output format: '{writerType}'. Supported formats: fxt, json.",
+                nameof(writerType));
         }
     }
 }

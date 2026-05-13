@@ -23,7 +23,7 @@ namespace FennecLabs.Instrumentation
                     foreach (var module in ass.Modules.OrderBy(m => m.FileName))
                     foreach (var classType in module.GetTypes().OrderBy(z => z.FullName).Where(z => !z.IsInterface))
                     {
-                        var typeResult = new ClassTypeResult(classType.FullName, classType.Module.FileName);
+                        var typeResult = new ClassTypeResult(classType.FullName);
                         foreach (var method in classType.Methods.Where(e => !e.IsAbstract).OrderBy(e => e.FullName))
                         {
                             int seq = 0;

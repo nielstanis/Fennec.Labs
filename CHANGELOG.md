@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Extract all command handlers to `Commands/` folder: `InstrumentCommandHandler`, `ScorecardCommandHandler`, `CompareCommandHandler`, `ReproduceCommandHandler`, `FeedsCommandHandler`; `Program.cs` reduced to a thin wiring layer (FD-008)
+- Add `FennecLabs.AssemblyDiff.Tests` project with 13 in-memory Cecil tests covering added/removed types, visibility changes, IL operand diffs, nested types, and report truncation (FD-008)
+- Add `CONTRIBUTING.md` documenting `dotnet test --filter "Category!=Live"` for CI and `--filter "Category=Live"` for full integration suite (FD-008)
 - Add `--format fxt|json` option to `instrument` command, making JSON output reachable (FD-007)
 - Add `feeds list/add/remove` subcommands wired to `FeedService` and `ConfigurationManager` (FD-007)
 - Add `Directory.Build.props` enforcing `TreatWarningsAsErrors` across all projects (FD-007)
@@ -27,5 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `NuGetService` download pipeline deduplicated into a single `ResolveAndDownloadAsync<T>` primitive; removed unused `feedName` parameter from all public methods; consistent `SourceCacheContext` and `DownloadResourceResult` disposal (FD-008)
+- `ScorecardClient` now accepts an injected `HttpClient` (optional; creates default when null) and implements `IDisposable`, disposing only the client it owns (FD-008)
 - `ScorecardClient` returns `null` instead of throwing `ArgumentException` when no repository URL found in package metadata (FD-007)
 - Bump NuGet.Protocol to 7.3.1 and System.CommandLine to 2.0.7, resolving NU1901 vulnerability warnings (FD-001)

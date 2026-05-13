@@ -11,5 +11,10 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/FennecLabs.AssemblyDiff.Tests/FennecLabs.AssemblyDiff.Tests.csproj" />
+    <Project Path="test/FennecLabs.Instrumentation.Tests/FennecLabs.Instrumentation.Tests.csproj" />
+    <Project Path="test/FennecLabs.TestUtilities/FennecLabs.TestUtilities.csproj" />
+  </Folder>
+  <Folder Name="/test/TestProjects/">
+    <Project Path="test/TestProjects/BasicConsole/BasicConsole.csproj" />
   </Folder>
 </Solution>
