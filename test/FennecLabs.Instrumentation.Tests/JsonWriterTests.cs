@@ -92,5 +92,18 @@ namespace FennecLabs.Instrumentation.Tests
 
             Assert.True(File.Exists(Path.Combine(nestedDir, "Test.json")));
         }
+
+        [Fact]
+        public async Task WriteOutputAsync_WhenDirectoryCreationFails_PropagatesException()
+        {
+            // Place a file where JsonWriter would try to create a subdirectory
+            var blockingFile = Path.Combine(_tempDir, "sub");
+            await File.WriteAllTextAsync(blockingFile, "I am a file");
+
+            var writer = new JsonWriter(_tempDir);
+
+            await Assert.ThrowsAnyAsync<IOException>(async () =>
+                await writer.WriteOutputAsync(MakeResult(), "sub/Test.dll"));
+        }
     }
 }
