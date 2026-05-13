@@ -9,17 +9,15 @@ namespace FennecLabs.Instrumentation.Output
         {
         }
 
-        public override async Task<bool> WriteOutputAsync(AssemblyResult assemblyResult)
-        {
-            return await WriteOutputAsync(assemblyResult, null);
-        }
-
-        public override async Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string? relativePath)
+        public override async Task<bool> WriteOutputAsync(
+            AssemblyResult assemblyResult,
+            string? relativePath,
+            CancellationToken cancellationToken)
         {
             string outputFile = ResolveOutputPath(assemblyResult.FilePath, relativePath, "json");
 
             using var f = File.Create(outputFile);
-            await JsonSerializer.SerializeAsync(f, assemblyResult);
+            await JsonSerializer.SerializeAsync(f, assemblyResult, cancellationToken: cancellationToken);
 
             return true;
         }

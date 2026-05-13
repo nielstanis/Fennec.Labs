@@ -13,7 +13,7 @@ namespace FennecLabs.Instrumentation
             _assembly = assembly;
         }
 
-        public AssemblyResult Analyse()
+        public AssemblyResult Analyze(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -23,6 +23,7 @@ namespace FennecLabs.Instrumentation
                     foreach (var module in ass.Modules.OrderBy(m => m.FileName))
                     foreach (var classType in module.GetTypes().OrderBy(z => z.FullName).Where(z => !z.IsInterface))
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         var typeResult = new ClassTypeResult(classType.FullName);
                         foreach (var method in classType.Methods.Where(e => !e.IsAbstract).OrderBy(e => e.FullName))
                         {
@@ -30,11 +31,11 @@ namespace FennecLabs.Instrumentation
                             if (method.HasBody)
                             {
                                 var parameters = string.Join(",", method.Parameters);
-                                var methodResult = new MethodResult(method.Name, parameters);                       
-                                
+                                var methodResult = new MethodResult(method.Name, parameters);
+
                                 foreach (var instruction in method.Body.Instructions
-                                    .Where(u => ((u.OpCode == OpCodes.Call)) 
-                                    || (u.OpCode == OpCodes.Callvirt) 
+                                    .Where(u => ((u.OpCode == OpCodes.Call))
+                                    || (u.OpCode == OpCodes.Callvirt)
                                     || (u.OpCode == OpCodes.Calli)
                                     || (u.OpCode == OpCodes.Newobj)
                                     ))
@@ -54,6 +55,10 @@ namespace FennecLabs.Instrumentation
                     return assembly;
                 }
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 var err = new AssemblyResult("NotAvailable", _assembly);
@@ -63,4 +68,3 @@ namespace FennecLabs.Instrumentation
         }
     }
 }
-

@@ -4,12 +4,10 @@ namespace FennecLabs.Instrumentation.Output
 {
     public class FxtWriter(string outputFolder) : Writer(outputFolder)
     {
-        public override async Task<bool> WriteOutputAsync(AssemblyResult assemblyResult)
-        {
-            return await WriteOutputAsync(assemblyResult, null);
-        }
-
-        public override async Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string? relativePath)
+        public override async Task<bool> WriteOutputAsync(
+            AssemblyResult assemblyResult,
+            string? relativePath,
+            CancellationToken cancellationToken)
         {
             string outputFile = ResolveOutputPath(assemblyResult.FilePath, relativePath, "fxt");
 
@@ -17,7 +15,9 @@ namespace FennecLabs.Instrumentation.Output
             foreach (var t in assemblyResult.Types.OrderBy(x => x.ClassType))
                 foreach (var m in t.Methods.OrderBy(z => z.Name))
                     foreach (var i in m.Invocations.OrderBy(r => r.Sequence))
-                        await f.WriteLineAsync($"{t.ClassType}::{m.Name}({m.Parameters})::{i.Invocation}");
+                        await f.WriteLineAsync(
+                            $"{t.ClassType}::{m.Name}({m.Parameters})::{i.Invocation}".AsMemory(),
+                            cancellationToken);
 
             return true;
         }

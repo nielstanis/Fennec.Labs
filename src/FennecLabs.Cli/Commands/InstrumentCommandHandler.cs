@@ -40,7 +40,7 @@ internal class InstrumentCommandHandler
         Console.WriteLine($"Instrumenting assembly: {filename}");
 
         var analyzer = new AssemblyAnalyzer(filename);
-        var result = analyzer.Analyse();
+        var result = analyzer.Analyze();
 
         if (result.HasError)
         {
@@ -48,7 +48,7 @@ internal class InstrumentCommandHandler
             return 1;
         }
 
-        var writer = WriterFactory.CreateWriter(format, output);
+        var writer = WriterFactory.CreateWriter(ParseFormat(format), output);
         await writer.WriteOutputAsync(result);
 
         Console.WriteLine($"Instrumentation complete. Output written to {output}/");
@@ -88,7 +88,7 @@ internal class InstrumentCommandHandler
             var resolvedVersion = Path.GetFileName(packagePath);
             var packageOutput = Path.Combine(output, packageId, resolvedVersion);
 
-            var writer = WriterFactory.CreateWriter(format, packageOutput);
+            var writer = WriterFactory.CreateWriter(ParseFormat(format), packageOutput);
             int successCount = 0;
             int errorCount = 0;
 
@@ -98,7 +98,7 @@ internal class InstrumentCommandHandler
                 try
                 {
                     var analyzer = new AssemblyAnalyzer(dll.FullPath);
-                    var result = analyzer.Analyse();
+                    var result = analyzer.Analyze();
 
                     if (result.HasError)
                     {
@@ -130,4 +130,9 @@ internal class InstrumentCommandHandler
             return 1;
         }
     }
+
+    private static OutputFormat ParseFormat(string format) =>
+        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)
+            ? OutputFormat.Json
+            : OutputFormat.Fxt;
 }

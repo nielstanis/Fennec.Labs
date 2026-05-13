@@ -11,12 +11,19 @@ namespace FennecLabs.Instrumentation.Output
             _outputFolder = outputFolder;
         }
 
-        public abstract Task<bool> WriteOutputAsync(AssemblyResult assemblyResult);
+        public abstract Task<bool> WriteOutputAsync(
+            AssemblyResult assemblyResult,
+            string? relativePath,
+            CancellationToken cancellationToken);
 
-        public virtual Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string? relativePath)
-        {
-            return WriteOutputAsync(assemblyResult);
-        }
+        public Task<bool> WriteOutputAsync(AssemblyResult assemblyResult)
+            => WriteOutputAsync(assemblyResult, null, default);
+
+        public Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string? relativePath)
+            => WriteOutputAsync(assemblyResult, relativePath, default);
+
+        public Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, CancellationToken cancellationToken)
+            => WriteOutputAsync(assemblyResult, null, cancellationToken);
 
         protected string ResolveOutputPath(string assemblyFilePath, string? relativePath, string extension)
         {

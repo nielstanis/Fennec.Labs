@@ -5,33 +5,19 @@ namespace FennecLabs.Instrumentation.Tests
     public class WriterFactoryTests
     {
         [Fact]
-        public void CreateWriter_WithJsonLowercase_ReturnsJsonWriter()
+        public void CreateWriter_WithJsonFormat_ReturnsJsonWriter()
         {
-            var writer = WriterFactory.CreateWriter("json", "/tmp");
+            var writer = WriterFactory.CreateWriter(OutputFormat.Json, "/tmp");
 
             Assert.IsType<JsonWriter>(writer);
         }
 
         [Fact]
-        public void CreateWriter_WithJsonMixedCase_ReturnsJsonWriter()
+        public void CreateWriter_WithFxtFormat_ReturnsFxtWriter()
         {
-            var writer = WriterFactory.CreateWriter("JSON", "/tmp");
-
-            Assert.IsType<JsonWriter>(writer);
-        }
-
-        [Fact]
-        public void CreateWriter_WithFxt_ReturnsFxtWriter()
-        {
-            var writer = WriterFactory.CreateWriter("fxt", "/tmp");
+            var writer = WriterFactory.CreateWriter(OutputFormat.Fxt, "/tmp");
 
             Assert.IsType<FxtWriter>(writer);
-        }
-
-        [Fact]
-        public void CreateWriter_WithUnknownType_ThrowsArgumentException()
-        {
-            Assert.Throws<ArgumentException>(() => WriterFactory.CreateWriter("sarif", "/tmp"));
         }
     }
 }
