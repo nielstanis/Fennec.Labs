@@ -1,5 +1,4 @@
-﻿using System.CommandLine;
-using System.Diagnostics;
+using System.CommandLine;
 using System.IO.Compression;
 using FennecLabs.AssemblyDiff;
 using FennecLabs.DotNetCli;
@@ -18,37 +17,28 @@ class Program
     {
         var rootCommand = new RootCommand("Fennec Labs CLI");
 
-        var filenameOption = new Option<string>(
-            "--filename",
-            "-f"
-        )
+        // instrument command
+        var filenameOption = new Option<string>("--filename", "-f")
         {
             Description = "Path to the assembly file to instrument"
         };
-
-        var nugetOption = new Option<string>(
-            "--nuget",
-            "-n"
-        )
+        var nugetOption = new Option<string>("--nuget", "-n")
         {
             Description = "NuGet package ID to download and instrument"
         };
-
-        var versionOption = new Option<string>(
-            "--version",
-            "-v"
-        )
+        var versionOption = new Option<string>("--version", "-v")
         {
             Description = "Version of the NuGet package (optional, uses latest if not specified)"
         };
-
-        var outputOption = new Option<string>(
-            "--output",
-            "-o"
-        )
+        var outputOption = new Option<string>("--output", "-o")
         {
             Description = "Output folder for instrumentation results (default: .fennec)",
             DefaultValueFactory = _ => ".fennec"
+        };
+        var formatOption = new Option<string>("--format", "-F")
+        {
+            Description = "Output format: fxt or json (default: fxt)",
+            DefaultValueFactory = _ => "fxt"
         };
 
         var instrumentCommand = new Command("instrument", "Instrument assembly files or NuGet packages");
@@ -56,39 +46,30 @@ class Program
         instrumentCommand.Options.Add(nugetOption);
         instrumentCommand.Options.Add(versionOption);
         instrumentCommand.Options.Add(outputOption);
+        instrumentCommand.Options.Add(formatOption);
         instrumentCommand.SetAction(async (ParseResult parseResult) =>
         {
             var filename = parseResult.GetValue(filenameOption);
             var nuget = parseResult.GetValue(nugetOption);
             var version = parseResult.GetValue(versionOption);
             var output = parseResult.GetValue(outputOption) ?? ".fennec";
+            var format = parseResult.GetValue(formatOption) ?? "fxt";
 
             if (!string.IsNullOrWhiteSpace(nuget))
-            {
-                await InstrumentNuGetPackageAsync(nuget, version, output);
-            }
-            else if (!string.IsNullOrWhiteSpace(filename))
-            {
-                await InstrumentAssemblyAsync(filename, output);
-            }
-            else
-            {
-                Console.Error.WriteLine("Either --filename or --nuget must be specified.");
-            }
+                return await InstrumentNuGetPackageAsync(nuget, version, output, format);
+            if (!string.IsNullOrWhiteSpace(filename))
+                return await InstrumentAssemblyAsync(filename, output, format);
+
+            Console.Error.WriteLine("Either --filename or --nuget must be specified.");
+            return 1;
         });
 
-        var projectPathOption = new Option<string>(
-            "--project",
-            "-p"
-        )
+        // scorecard command
+        var projectPathOption = new Option<string>("--project", "-p")
         {
             Description = "Path to the .csproj file"
         };
-
-        var reportOption = new Option<bool>(
-            "--report",
-            "-r"
-        )
+        var reportOption = new Option<bool>("--report", "-r")
         {
             Description = "Generate an HTML report with scorecard results and dependency tree"
         };
@@ -100,23 +81,17 @@ class Program
         {
             var projectPath = parseResult.GetValue(projectPathOption);
             var generateReport = parseResult.GetValue(reportOption);
-            await GetScorecardsForProjectAsync(projectPath, generateReport);
+            return await GetScorecardsForProjectAsync(projectPath, generateReport);
         });
 
-        var compareNugetOption = new Option<string>(
-            "--nuget",
-            "-n"
-        )
+        // compare command
+        var compareNugetOption = new Option<string>("--nuget", "-n")
         {
             Description = "NuGet package ID to compare"
         };
-
-        var compareVersionOption = new Option<string>(
-            "--version",
-            "-v"
-        )
+        var compareVersionOption = new Option<string>("--version", "-v")
         {
-            Description = "Version of the NuGet package to compare (optional, uses latest if not specified)"
+            Description = "Version to compare (optional, uses latest if not specified)"
         };
 
         var compareCommand = new Command("compare", "Compare assemblies between two versions of a NuGet package");
@@ -130,34 +105,24 @@ class Program
             if (string.IsNullOrWhiteSpace(nuget))
             {
                 Console.Error.WriteLine("--nuget is required.");
-                return;
+                return 1;
             }
 
-            await CompareNuGetPackageAsync(nuget, version);
+            return await CompareNuGetPackageAsync(nuget, version);
         });
 
-        var reproduceFilenameOption = new Option<string>(
-            "--filename",
-            "-f"
-        )
+        // reproduce command
+        var reproduceFilenameOption = new Option<string>("--filename", "-f")
         {
             Description = "Path to the .nupkg file to compare"
         };
-
-        var reproduceNugetOption = new Option<string>(
-            "--nuget",
-            "-n"
-        )
+        var reproduceNugetOption = new Option<string>("--nuget", "-n")
         {
             Description = "NuGet package ID to compare against"
         };
-
-        var reproduceVersionOption = new Option<string>(
-            "--version",
-            "-v"
-        )
+        var reproduceVersionOption = new Option<string>("--version", "-v")
         {
-            Description = "Version of the NuGet package to compare against (optional, uses latest if not specified)"
+            Description = "Version to compare against (optional, uses latest if not specified)"
         };
 
         var reproduceCommand = new Command("reproduce", "Compare a local .nupkg file with a NuGet package from the feed");
@@ -173,46 +138,140 @@ class Program
             if (string.IsNullOrWhiteSpace(filename))
             {
                 Console.Error.WriteLine("--filename is required.");
-                return;
+                return 1;
             }
-
             if (string.IsNullOrWhiteSpace(nuget))
             {
                 Console.Error.WriteLine("--nuget is required.");
-                return;
+                return 1;
             }
 
-            await ReproduceComparisonAsync(filename, nuget, version);
+            return await ReproduceComparisonAsync(filename, nuget, version);
         });
+
+        // feeds command
+        var feedsCommand = new Command("feeds", "Manage NuGet feed sources");
+
+        var feedsListCommand = new Command("list", "List configured NuGet feeds");
+        feedsListCommand.SetAction(async (ParseResult _) =>
+        {
+            var feedService = new FeedService();
+            var feeds = await feedService.GetAllFeedsAsync();
+
+            if (feeds.Count == 0)
+            {
+                Console.WriteLine("No feeds configured.");
+                return 0;
+            }
+
+            Console.WriteLine("Configured feeds:");
+            foreach (var feed in feeds)
+            {
+                var marker = feed.IsDefault ? " (default)" : "";
+                Console.WriteLine($"  {feed.Name}{marker} — {feed.Source}");
+            }
+            return 0;
+        });
+        feedsCommand.Subcommands.Add(feedsListCommand);
+
+        var feedAddNameOption = new Option<string>("--name", "-n") { Description = "Feed name" };
+        var feedAddSourceOption = new Option<string>("--source", "-s") { Description = "Feed source URL" };
+        var feedAddDefaultOption = new Option<bool>("--default") { Description = "Set as default feed" };
+
+        var feedsAddCommand = new Command("add", "Add a NuGet feed source");
+        feedsAddCommand.Options.Add(feedAddNameOption);
+        feedsAddCommand.Options.Add(feedAddSourceOption);
+        feedsAddCommand.Options.Add(feedAddDefaultOption);
+        feedsAddCommand.SetAction(async (ParseResult parseResult) =>
+        {
+            var name = parseResult.GetValue(feedAddNameOption);
+            var source = parseResult.GetValue(feedAddSourceOption);
+            var setDefault = parseResult.GetValue(feedAddDefaultOption);
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                Console.Error.WriteLine("--name is required.");
+                return 1;
+            }
+            if (string.IsNullOrWhiteSpace(source))
+            {
+                Console.Error.WriteLine("--source is required.");
+                return 1;
+            }
+
+            try
+            {
+                var feedService = new FeedService();
+                await feedService.AddFeedAsync(name, source, setDefault);
+                Console.WriteLine($"Feed '{name}' added.");
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Error adding feed: {ex.Message}");
+                return 1;
+            }
+        });
+        feedsCommand.Subcommands.Add(feedsAddCommand);
+
+        var feedRemoveNameOption = new Option<string>("--name", "-n") { Description = "Name of the feed to remove" };
+
+        var feedsRemoveCommand = new Command("remove", "Remove a NuGet feed source");
+        feedsRemoveCommand.Options.Add(feedRemoveNameOption);
+        feedsRemoveCommand.SetAction(async (ParseResult parseResult) =>
+        {
+            var name = parseResult.GetValue(feedRemoveNameOption);
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                Console.Error.WriteLine("--name is required.");
+                return 1;
+            }
+
+            try
+            {
+                var configManager = new ConfigurationManager();
+                await configManager.RemoveFeedAsync(name);
+                Console.WriteLine($"Feed '{name}' removed.");
+                return 0;
+            }
+            catch (ArgumentException ex)
+            {
+                Console.Error.WriteLine($"Error: {ex.Message}");
+                return 1;
+            }
+        });
+        feedsCommand.Subcommands.Add(feedsRemoveCommand);
 
         rootCommand.Subcommands.Add(instrumentCommand);
         rootCommand.Subcommands.Add(scorecardCommand);
         rootCommand.Subcommands.Add(compareCommand);
         rootCommand.Subcommands.Add(reproduceCommand);
+        rootCommand.Subcommands.Add(feedsCommand);
 
         return await rootCommand.Parse(args).InvokeAsync();
     }
 
-    static async Task GetScorecardsForProjectAsync(string? projectPath = null, bool generateReport = false)
+    static async Task<int> GetScorecardsForProjectAsync(string? projectPath = null, bool generateReport = false)
     {
-
         Console.WriteLine($"Analyzing project: {projectPath ?? "all projects"}");
         Console.WriteLine();
 
-        // Get package list from the project
-        var packageList = projectPath != null ? await DotnetCliExecutor.GetPackageListAsync(projectPath) : await DotnetCliExecutor.GetPackageListAsync();
-        
+        var packageList = projectPath != null
+            ? await DotnetCliExecutor.GetPackageListAsync(projectPath)
+            : await DotnetCliExecutor.GetPackageListAsync();
+
         if (packageList == null || packageList.Projects.Count == 0)
         {
             Console.WriteLine("No packages found in the project.");
-            return;
+            return 0;
         }
 
         var project = packageList.Projects[0];
         if (project.Frameworks.Count == 0)
         {
             Console.WriteLine("No frameworks found in the project.");
-            return;
+            return 0;
         }
 
         var framework = project.Frameworks[0];
@@ -223,25 +282,23 @@ class Program
         if (allPackages.Count == 0)
         {
             Console.WriteLine("No packages found in the project.");
-            return;
+            return 0;
         }
 
         Console.WriteLine($"Found {topLevelPackages.Count} top-level and {transitivePackages.Count} transitive package(s):");
         Console.WriteLine();
 
         var scorecardClient = new ScorecardClient();
-
-        // Process each package
         var results = new List<PackageScorecardResult>();
 
         foreach (var package in allPackages)
         {
             Console.Write($"Processing {package.Id} {package.ResolvedVersion}... ");
-            
+
             try
             {
                 var scorecardResult = await scorecardClient.GetScorecardResultFromPackageAsync(
-                    package.Id, 
+                    package.Id,
                     package.ResolvedVersion);
 
                 if (scorecardResult != null)
@@ -274,7 +331,7 @@ class Program
                     Scorecard = null,
                     Error = ex.Message
                 });
-                Console.WriteLine($"Error: {ex.Message}");
+                Console.Error.WriteLine($"Error: {ex.Message}");
             }
         }
 
@@ -290,9 +347,7 @@ class Program
         {
             Console.WriteLine($"Packages with scorecards ({packagesWithScorecards.Count}):");
             foreach (var result in packagesWithScorecards.OrderByDescending(r => r.Scorecard!.Score))
-            {
                 Console.WriteLine($"  {result.PackageId} {result.PackageVersion}: {result.Scorecard!.Score:F2}/10");
-            }
             Console.WriteLine();
         }
 
@@ -300,9 +355,7 @@ class Program
         {
             Console.WriteLine($"Packages without scorecards ({packagesWithoutScorecards.Count}):");
             foreach (var result in packagesWithoutScorecards)
-            {
                 Console.WriteLine($"  {result.PackageId} {result.PackageVersion}");
-            }
             Console.WriteLine();
         }
 
@@ -310,13 +363,10 @@ class Program
         {
             Console.WriteLine($"Packages with errors ({packagesWithErrors.Count}):");
             foreach (var result in packagesWithErrors)
-            {
                 Console.WriteLine($"  {result.PackageId} {result.PackageVersion}: {result.Error}");
-            }
             Console.WriteLine();
         }
 
-        // Show detailed scorecard information
         if (packagesWithScorecards.Count > 0)
         {
             Console.WriteLine("=== Detailed Scorecard Information ===");
@@ -339,9 +389,7 @@ class Program
                         var status = check.Score == -1 ? "N/A" : $"{check.Score}/10";
                         Console.WriteLine($"  {check.Name}: {status}");
                         if (!string.IsNullOrWhiteSpace(check.Reason))
-                        {
                             Console.WriteLine($"    {check.Reason}");
-                        }
                     }
                 }
 
@@ -349,13 +397,14 @@ class Program
             }
         }
 
-        // Generate HTML report if requested
         if (generateReport)
         {
             var reportPath = await GenerateHtmlReportAsync(packageList, results, projectPath);
             Console.WriteLine();
             Console.WriteLine($"HTML report generated: {reportPath}");
         }
+
+        return 0;
     }
 
     static async Task<string> GenerateHtmlReportAsync(
@@ -553,18 +602,17 @@ class Program
 <body>
     <div class=""container"">
         <h1>Security Scorecard Report</h1>
-        
+
         <div class=""info-section"">
             <p><span class=""info-label"">Generated:</span> {DateTime.Now:yyyy-MM-dd HH:mm:ss}</p>
             <p><span class=""info-label"">Project:</span> {projectPath ?? "Current Directory"}</p>
         </div>";
 
-        // Summary statistics
         var packagesWithScorecards = results.Where(r => r.Scorecard != null).ToList();
         var packagesWithoutScorecards = results.Where(r => r.Scorecard == null && string.IsNullOrEmpty(r.Error)).ToList();
         var packagesWithErrors = results.Where(r => !string.IsNullOrEmpty(r.Error)).ToList();
-        var avgScore = packagesWithScorecards.Count > 0 
-            ? packagesWithScorecards.Average(r => r.Scorecard!.Score) 
+        var avgScore = packagesWithScorecards.Count > 0
+            ? packagesWithScorecards.Average(r => r.Scorecard!.Score)
             : 0;
 
         html += $@"
@@ -587,7 +635,6 @@ class Program
             </div>
         </div>";
 
-        // Dependency Tree
         if (packageList != null && packageList.Projects.Count > 0)
         {
             html += @"
@@ -598,8 +645,7 @@ class Program
             if (project.Frameworks.Count > 0)
             {
                 var framework = project.Frameworks[0];
-                
-                // Top-level packages
+
                 html += @"
             <h3 style=""margin-top: 15px; color: #555;"">Top-Level Packages</h3>";
                 foreach (var package in framework.TopLevelPackages)
@@ -608,7 +654,6 @@ class Program
                     html += GeneratePackageHtml(package, result, false);
                 }
 
-                // Transitive packages
                 if (framework.TransitivePackages.Count > 0)
                 {
                     html += @"
@@ -625,7 +670,6 @@ class Program
         </div>";
         }
 
-        // Detailed Scorecard Results
         if (packagesWithScorecards.Count > 0)
         {
             html += @"
@@ -671,7 +715,6 @@ class Program
             }
         }
 
-        // Packages without scorecards
         if (packagesWithoutScorecards.Count > 0)
         {
             html += @"
@@ -691,7 +734,6 @@ class Program
             }
         }
 
-        // Packages with errors
         if (packagesWithErrors.Count > 0)
         {
             html += @"
@@ -726,8 +768,8 @@ class Program
     static string GeneratePackageHtml(PackageReference package, PackageScorecardResult? result, bool isTransitive)
     {
         var cssClass = isTransitive ? "package-item transitive-package" : "package-item";
-        var scoreHtml = "";
-        
+        string scoreHtml;
+
         if (result?.Scorecard != null)
         {
             var score = result.Scorecard.Score;
@@ -782,12 +824,12 @@ class Program
             .Replace("'", "&#39;");
     }
 
-    static async Task InstrumentAssemblyAsync(string filename, string output)
+    static async Task<int> InstrumentAssemblyAsync(string filename, string output, string format)
     {
         if (!File.Exists(filename))
         {
             Console.Error.WriteLine($"Assembly file not found: {filename}");
-            return;
+            return 1;
         }
 
         Console.WriteLine($"Instrumenting assembly: {filename}");
@@ -798,53 +840,48 @@ class Program
         if (result.HasError)
         {
             Console.Error.WriteLine($"Error analyzing assembly: {result.ExceptionOccurred?.Message}");
-            return;
+            return 1;
         }
 
-        var writer = WriterFactory.CreateWriter("FXT", output);
+        var writer = WriterFactory.CreateWriter(format, output);
         await writer.WriteOutputAsync(result);
 
         Console.WriteLine($"Instrumentation complete. Output written to {output}/");
+        return 0;
     }
 
-    static async Task InstrumentNuGetPackageAsync(string packageId, string? version, string output)
+    static async Task<int> InstrumentNuGetPackageAsync(string packageId, string? version, string output, string format)
     {
         Console.WriteLine($"Downloading NuGet package: {packageId} {version ?? "latest"}");
-        
+
         var nugetService = new NuGetService();
-        
+
         try
         {
-            // Download the package
             var packagePath = await nugetService.DownloadPackageAsync(packageId, version);
             Console.WriteLine($"Package downloaded to: {packagePath}");
 
-            // Get package contents to find DLL files
             var contents = await nugetService.GetPackageContentsAsync(packageId, version);
             var dllFiles = contents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
-                    && !f.Path.Contains("_._")) // Exclude placeholder files
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                    && !f.Path.Contains("_._"))
                 .ToList();
 
             if (dllFiles.Count == 0)
             {
                 Console.WriteLine("No DLL files found in the package.");
-                return;
+                return 0;
             }
 
             Console.WriteLine($"Found {dllFiles.Count} DLL file(s) in the package:");
             foreach (var dll in dllFiles)
-            {
                 Console.WriteLine($"  - {dll.Path}");
-            }
             Console.WriteLine();
 
-            // Scope output under packageId/resolvedVersion so multiple packages and versions don't collide
             var resolvedVersion = Path.GetFileName(packagePath);
             var packageOutput = Path.Combine(output, packageId, resolvedVersion);
 
-            // Instrument each DLL
-            var writer = WriterFactory.CreateWriter("FXT", packageOutput);
+            var writer = WriterFactory.CreateWriter(format, packageOutput);
             int successCount = 0;
             int errorCount = 0;
 
@@ -858,12 +895,11 @@ class Program
 
                     if (result.HasError)
                     {
-                        Console.WriteLine($"Error: {result.ExceptionOccurred?.Message}");
+                        Console.Error.WriteLine($"Error: {result.ExceptionOccurred?.Message}");
                         errorCount++;
                     }
                     else
                     {
-                        // Pass the relative path from the package to preserve folder structure
                         await writer.WriteOutputAsync(result, dll.Path);
                         Console.WriteLine("✓");
                         successCount++;
@@ -871,7 +907,7 @@ class Program
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.Error.WriteLine($"Error: {ex.Message}");
                     errorCount++;
                 }
             }
@@ -879,76 +915,68 @@ class Program
             Console.WriteLine();
             Console.WriteLine($"Instrumentation complete: {successCount} succeeded, {errorCount} failed.");
             Console.WriteLine($"Output written to {packageOutput}/");
+            return errorCount > 0 ? 1 : 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error downloading or processing package: {ex.Message}");
+            return 1;
         }
     }
 
-    static async Task CompareNuGetPackageAsync(string packageId, string? version)
+    static async Task<int> CompareNuGetPackageAsync(string packageId, string? version)
     {
         Console.WriteLine($"Comparing NuGet package: {packageId}");
-        
+
         var nugetService = new NuGetService();
-        
+
         try
         {
-            // Get all versions of the package
             var allVersions = await nugetService.GetPackageVersionsAsync(packageId, includePrerelease: false);
             var sortedVersions = allVersions.OrderByDescending(v => v).ToList();
 
             if (sortedVersions.Count < 2)
             {
                 Console.WriteLine($"Package '{packageId}' has less than 2 versions. Cannot compare.");
-                return;
+                return 0;
             }
 
-            NuGetVersion? currentVersion = null;
-            NuGetVersion? previousVersion = null;
+            NuGetVersion? currentVersion;
+            NuGetVersion? previousVersion;
 
             if (!string.IsNullOrWhiteSpace(version))
             {
                 if (!NuGetVersion.TryParse(version, out var parsedVersion))
                 {
                     Console.Error.WriteLine($"Invalid version format: {version}");
-                    return;
+                    return 1;
                 }
                 currentVersion = parsedVersion;
 
-                // Find the index of the current version
-                var currentIndex = sortedVersions.FindIndex(v => v == currentVersion!);
+                var currentIndex = sortedVersions.FindIndex(v => v == currentVersion);
                 if (currentIndex == -1)
                 {
                     Console.Error.WriteLine($"Version '{version}' not found for package '{packageId}'");
-                    return;
+                    return 1;
                 }
 
                 if (currentIndex == sortedVersions.Count - 1)
                 {
                     Console.Error.WriteLine($"Version '{version}' is the oldest version. Cannot compare with previous version.");
-                    return;
+                    return 1;
                 }
 
                 previousVersion = sortedVersions[currentIndex + 1];
             }
             else
             {
-                // Use latest and previous latest
                 currentVersion = sortedVersions[0];
                 previousVersion = sortedVersions[1];
-            }
-
-            if (currentVersion == null || previousVersion == null)
-            {
-                Console.Error.WriteLine("Failed to determine versions for comparison.");
-                return;
             }
 
             Console.WriteLine($"Comparing version {currentVersion} with previous version {previousVersion}");
             Console.WriteLine();
 
-            // Download both versions
             Console.WriteLine($"Downloading version {currentVersion}...");
             var currentPackagePath = await nugetService.DownloadPackageAsync(packageId, currentVersion.ToNormalizedString());
             Console.WriteLine($"Downloaded to: {currentPackagePath}");
@@ -958,44 +986,36 @@ class Program
             Console.WriteLine($"Downloaded to: {previousPackagePath}");
             Console.WriteLine();
 
-            // Get contents of both packages
             var currentContents = await nugetService.GetPackageContentsAsync(packageId, currentVersion.ToNormalizedString());
             var previousContents = await nugetService.GetPackageContentsAsync(packageId, previousVersion.ToNormalizedString());
 
-            // Find DLL files in both packages
             var currentDlls = currentContents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
                     && !f.Path.Contains("_._"))
                 .ToDictionary(f => f.Path, f => f);
 
             var previousDlls = previousContents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
                     && !f.Path.Contains("_._"))
                 .ToDictionary(f => f.Path, f => f);
 
-            // Find matching DLLs by relative path
             var matchingDlls = currentDlls.Keys.Intersect(previousDlls.Keys).ToList();
             var onlyInCurrent = currentDlls.Keys.Except(previousDlls.Keys).ToList();
             var onlyInPrevious = previousDlls.Keys.Except(currentDlls.Keys).ToList();
 
             Console.WriteLine($"Found {matchingDlls.Count} matching DLL file(s) to compare");
             if (onlyInCurrent.Count > 0)
-            {
                 Console.WriteLine($"  {onlyInCurrent.Count} DLL(s) only in version {currentVersion}");
-            }
             if (onlyInPrevious.Count > 0)
-            {
                 Console.WriteLine($"  {onlyInPrevious.Count} DLL(s) only in version {previousVersion}");
-            }
             Console.WriteLine();
 
             if (matchingDlls.Count == 0)
             {
                 Console.WriteLine("No matching DLL files found to compare.");
-                return;
+                return 0;
             }
 
-            // Compare each matching DLL
             int identicalCount = 0;
             int differentCount = 0;
             int errorCount = 0;
@@ -1016,7 +1036,7 @@ class Program
 
                     if (result.AreEqual)
                     {
-                        Console.WriteLine($"  ✓ Identical");
+                        Console.WriteLine("  ✓ Identical");
                         identicalCount++;
                     }
                     else
@@ -1024,67 +1044,58 @@ class Program
                         Console.WriteLine($"  ✗ Differences found ({result.Differences.Count} difference(s))");
                         differentCount++;
 
-                        // Show summary
                         if (result.TypesOnlyInAssembly1.Count > 0)
-                        {
                             Console.WriteLine($"    - {result.TypesOnlyInAssembly1.Count} type(s) only in {previousVersion}");
-                        }
                         if (result.TypesOnlyInAssembly2.Count > 0)
-                        {
                             Console.WriteLine($"    - {result.TypesOnlyInAssembly2.Count} type(s) only in {currentVersion}");
-                        }
                         if (result.MethodBodyDifferences.Count > 0)
-                        {
                             Console.WriteLine($"    - {result.MethodBodyDifferences.Count} method(s) with body differences");
-                        }
 
-                        // Show detailed report
                         Console.WriteLine();
                         Console.WriteLine("  Detailed Report:");
                         var report = result.GenerateReport();
                         foreach (var line in report.Split('\n'))
                         {
                             if (!string.IsNullOrWhiteSpace(line))
-                            {
                                 Console.WriteLine($"    {line}");
-                            }
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"  ✗ Error: {ex.Message}");
+                    Console.Error.WriteLine($"  ✗ Error: {ex.Message}");
                     errorCount++;
                 }
                 Console.WriteLine();
             }
 
-            // Summary
             Console.WriteLine("=== Comparison Summary ===");
             Console.WriteLine($"Package: {packageId}");
             Console.WriteLine($"Version {currentVersion} vs {previousVersion}");
             Console.WriteLine($"  Identical: {identicalCount}");
             Console.WriteLine($"  Different: {differentCount}");
             Console.WriteLine($"  Errors: {errorCount}");
+            return errorCount > 0 ? 1 : 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error comparing package: {ex.Message}");
+            return 1;
         }
     }
 
-    static async Task ReproduceComparisonAsync(string nupkgFilePath, string packageId, string? version)
+    static async Task<int> ReproduceComparisonAsync(string nupkgFilePath, string packageId, string? version)
     {
         if (!File.Exists(nupkgFilePath))
         {
             Console.Error.WriteLine($"File not found: {nupkgFilePath}");
-            return;
+            return 1;
         }
 
         if (!nupkgFilePath.EndsWith(".nupkg", StringComparison.OrdinalIgnoreCase))
         {
             Console.Error.WriteLine($"File must be a .nupkg file: {nupkgFilePath}");
-            return;
+            return 1;
         }
 
         Console.WriteLine($"Comparing local package file: {nupkgFilePath}");
@@ -1096,7 +1107,6 @@ class Program
 
         try
         {
-            // Extract the local .nupkg file
             tempExtractPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempExtractPath);
 
@@ -1105,49 +1115,40 @@ class Program
             Console.WriteLine("Extraction complete.");
             Console.WriteLine();
 
-            // Get DLL files from the extracted .nupkg
             var localContents = GetPackageContentsFromDirectory(tempExtractPath);
             var localDlls = localContents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
                     && !f.Path.Contains("_._"))
                 .ToDictionary(f => f.Path, f => f);
 
-            // Download the NuGet package from the feed
             Console.WriteLine($"Downloading NuGet package: {packageId} {version ?? "latest"}");
             var feedPackagePath = await nugetService.DownloadPackageAsync(packageId, version);
             Console.WriteLine($"Downloaded to: {feedPackagePath}");
             Console.WriteLine();
 
-            // Get DLL files from the downloaded package
             var feedContents = await nugetService.GetPackageContentsAsync(packageId, version);
             var feedDlls = feedContents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) 
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
                     && !f.Path.Contains("_._"))
                 .ToDictionary(f => f.Path, f => f);
 
-            // Find matching DLLs by relative path
             var matchingDlls = localDlls.Keys.Intersect(feedDlls.Keys).ToList();
             var onlyInLocal = localDlls.Keys.Except(feedDlls.Keys).ToList();
             var onlyInFeed = feedDlls.Keys.Except(localDlls.Keys).ToList();
 
             Console.WriteLine($"Found {matchingDlls.Count} matching DLL file(s) to compare");
             if (onlyInLocal.Count > 0)
-            {
                 Console.WriteLine($"  {onlyInLocal.Count} DLL(s) only in local package");
-            }
             if (onlyInFeed.Count > 0)
-            {
                 Console.WriteLine($"  {onlyInFeed.Count} DLL(s) only in feed package");
-            }
             Console.WriteLine();
 
             if (matchingDlls.Count == 0)
             {
                 Console.WriteLine("No matching DLL files found to compare.");
-                return;
+                return 0;
             }
 
-            // Compare each matching DLL
             int identicalCount = 0;
             int differentCount = 0;
             int errorCount = 0;
@@ -1168,7 +1169,7 @@ class Program
 
                     if (result.AreEqual)
                     {
-                        Console.WriteLine($"  ✓ Identical");
+                        Console.WriteLine("  ✓ Identical");
                         identicalCount++;
                     }
                     else
@@ -1176,56 +1177,46 @@ class Program
                         Console.WriteLine($"  ✗ Differences found ({result.Differences.Count} difference(s))");
                         differentCount++;
 
-                        // Show summary
                         if (result.TypesOnlyInAssembly1.Count > 0)
-                        {
                             Console.WriteLine($"    - {result.TypesOnlyInAssembly1.Count} type(s) only in local package");
-                        }
                         if (result.TypesOnlyInAssembly2.Count > 0)
-                        {
                             Console.WriteLine($"    - {result.TypesOnlyInAssembly2.Count} type(s) only in feed package");
-                        }
                         if (result.MethodBodyDifferences.Count > 0)
-                        {
                             Console.WriteLine($"    - {result.MethodBodyDifferences.Count} method(s) with body differences");
-                        }
 
-                        // Show detailed report
                         Console.WriteLine();
                         Console.WriteLine("  Detailed Report:");
                         var report = result.GenerateReport();
                         foreach (var line in report.Split('\n'))
                         {
                             if (!string.IsNullOrWhiteSpace(line))
-                            {
                                 Console.WriteLine($"    {line}");
-                            }
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"  ✗ Error: {ex.Message}");
+                    Console.Error.WriteLine($"  ✗ Error: {ex.Message}");
                     errorCount++;
                 }
                 Console.WriteLine();
             }
 
-            // Summary
             Console.WriteLine("=== Comparison Summary ===");
             Console.WriteLine($"Local Package: {nupkgFilePath}");
             Console.WriteLine($"Feed Package: {packageId} {version ?? "latest"}");
             Console.WriteLine($"  Identical: {identicalCount}");
             Console.WriteLine($"  Different: {differentCount}");
             Console.WriteLine($"  Errors: {errorCount}");
+            return errorCount > 0 ? 1 : 0;
         }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"Error comparing packages: {ex.Message}");
+            return 1;
         }
         finally
         {
-            // Clean up temporary extraction directory
             if (tempExtractPath != null && Directory.Exists(tempExtractPath))
             {
                 try
@@ -1254,9 +1245,7 @@ class Program
             var entryDirectory = Path.GetDirectoryName(entryPath);
 
             if (!string.IsNullOrEmpty(entryDirectory))
-            {
                 Directory.CreateDirectory(entryDirectory);
-            }
 
             using var entryStream = entry.Open();
             using var fileOutStream = File.Create(entryPath);

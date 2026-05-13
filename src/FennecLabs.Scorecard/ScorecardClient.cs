@@ -87,18 +87,7 @@ public class ScorecardClient
             }
         }
 
-        // Fallback: Try to infer from package ID (heuristic)
-        var parts = packageId.Split('.');
-        if (parts.Length < 2)
-        {
-            throw new ArgumentException($"Cannot determine repository from package ID: {packageId}. Package metadata may not contain repository URL.");
-        }
-
-        // Common pattern: Microsoft.AspNetCore.App -> microsoft/aspnetcore
-        var inferredOrg = parts[0].ToLowerInvariant();
-        var inferredRepo = string.Join(".", parts.Skip(1)).ToLowerInvariant();
-        
-        return await GetScorecardResultAsync("github.com", inferredOrg, inferredRepo, commit: null, cancellationToken);
+        return null;
     }
 
     private static (string? platform, string? org, string? repo) ParseRepositoryUrl(string? url)

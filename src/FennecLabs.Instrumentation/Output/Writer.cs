@@ -11,26 +11,11 @@ namespace FennecLabs.Instrumentation.Output
             _outputFolder = outputFolder;
         }
 
-        protected bool EnsureFolderCreated()     
-        {
-            var result = Directory.Exists(_outputFolder);
-            Console.WriteLine($"Creating output folder: {_outputFolder}");
-            Console.WriteLine($"Created: {result.ToString()}");
-            if (!result)
-            {
-                Console.WriteLine("Creating output folder: " + _outputFolder);
-                var x = Directory.CreateDirectory(_outputFolder);
-                result = Directory.Exists(_outputFolder);
-            }
-            return result;
-        }
-
         public abstract Task<bool> WriteOutputAsync(AssemblyResult assemblyResult);
-        
-        public virtual Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string relativePath)
+
+        public virtual Task<bool> WriteOutputAsync(AssemblyResult assemblyResult, string? relativePath)
         {
             return WriteOutputAsync(assemblyResult);
         }
     }
 }
-
