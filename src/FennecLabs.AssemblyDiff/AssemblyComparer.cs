@@ -83,6 +83,26 @@ public class AssemblyComparer
         {
             result.Differences.Add($"Custom attribute only in Assembly2: {attr}");
         }
+
+        // Compare constructor arguments for attributes present in both assemblies
+        foreach (var attrTypeName in attrs1.Intersect(attrs2))
+        {
+            var args1 = Assembly1.CustomAttributes
+                .Where(a => a.AttributeType.FullName == attrTypeName)
+                .Select(GetCustomAttributeKey)
+                .OrderBy(k => k)
+                .ToList();
+            var args2 = Assembly2.CustomAttributes
+                .Where(a => a.AttributeType.FullName == attrTypeName)
+                .Select(GetCustomAttributeKey)
+                .OrderBy(k => k)
+                .ToList();
+
+            if (!args1.SequenceEqual(args2))
+            {
+                result.Differences.Add($"Custom attribute '{attrTypeName}': argument values differ");
+            }
+        }
     }
 
     private void CompareModules(AssemblyComparisonResult result)
@@ -224,6 +244,13 @@ public class AssemblyComparer
             if (method1.IsStatic != method2.IsStatic)
             {
                 result.Differences.Add($"Type '{typeName}', Method '{methodSig}': IsStatic differs");
+            }
+
+            if (method1.ImplAttributes != method2.ImplAttributes)
+            {
+                result.Differences.Add(
+                    $"Type '{typeName}', Method '{methodSig}': MethodImplAttributes differ " +
+                    $"({method1.ImplAttributes} vs {method2.ImplAttributes})");
             }
 
             // Compare method body instructions
@@ -519,9 +546,26 @@ public class AssemblyComparer
         sb.Append(" ");
         sb.Append(method.Name);
         sb.Append("(");
-        sb.Append(string.Join(", ", method.Parameters.Select(p => p.ParameterType.FullName)));
+        sb.Append(string.Join(", ", method.Parameters.Select(p =>
+        {
+            var attrPrefix = p.Attributes != ParameterAttributes.None
+                ? $"[{p.Attributes}] "
+                : "";
+            return $"{attrPrefix}{p.ParameterType.FullName}";
+        })));
         sb.Append(")");
         return sb.ToString();
+    }
+
+    private static string GetCustomAttributeKey(CustomAttribute attr)
+    {
+        var ctorArgs = string.Join(", ",
+            attr.ConstructorArguments.Select(a => a.Value?.ToString() ?? "null"));
+        var namedArgs = string.Join(", ",
+            attr.Fields.Select(f => $"{f.Name}={f.Argument.Value?.ToString() ?? "null"}")
+                .Concat(attr.Properties.Select(p => $"{p.Name}={p.Argument.Value?.ToString() ?? "null"}"))
+                .OrderBy(s => s));
+        return namedArgs.Length > 0 ? $"({ctorArgs})|{namedArgs}" : ctorArgs;
     }
 }
 

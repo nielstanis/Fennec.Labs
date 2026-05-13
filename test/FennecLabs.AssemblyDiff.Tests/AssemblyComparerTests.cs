@@ -285,4 +285,85 @@ public class AssemblyComparerTests
 
         Assert.True(result.AreEqual);
     }
+
+    private static void AddAssemblyStringAttribute(AssemblyDefinition assembly, string value)
+    {
+        var attrType = new TypeDefinition("", "TestStringAttr",
+            TypeAttributes.NotPublic | TypeAttributes.Class,
+            assembly.MainModule.TypeSystem.Object);
+        var ctor = new MethodDefinition(".ctor",
+            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName,
+            assembly.MainModule.TypeSystem.Void);
+        ctor.Parameters.Add(new ParameterDefinition(assembly.MainModule.TypeSystem.String));
+        var il = ctor.Body.GetILProcessor();
+        il.Append(il.Create(OpCodes.Ret));
+        attrType.Methods.Add(ctor);
+        assembly.MainModule.Types.Add(attrType);
+
+        var attr = new CustomAttribute(ctor);
+        attr.ConstructorArguments.Add(
+            new CustomAttributeArgument(assembly.MainModule.TypeSystem.String, value));
+        assembly.CustomAttributes.Add(attr);
+    }
+
+    [Fact]
+    public void Compare_AssemblyAttributeConstructorArgsDiffer_CapturedInDifferences()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        AddAssemblyStringAttribute(a1, "1.0.0");
+        AddAssemblyStringAttribute(a2, "2.0.0");
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Differences,
+            d => d.Contains("TestStringAttr") && d.Contains("argument values differ"));
+        Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_MethodImplAttributesDiffer_CapturedInDifferences()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+
+        var type1 = AddPublicClass(a1, "MyClass");
+        var m1 = AddVoidMethod(type1, "Compute");
+        m1.ImplAttributes = MethodImplAttributes.AggressiveInlining;
+
+        var type2 = AddPublicClass(a2, "MyClass");
+        var m2 = AddVoidMethod(type2, "Compute");
+        m2.ImplAttributes = MethodImplAttributes.NoInlining;
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Differences, d => d.Contains("ImplAttributes"));
+        Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_MethodParameterAttributesDiffer_TreatedAsDistinctMethods()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+
+        var type1 = AddPublicClass(a1, "MyClass");
+        var method1 = new MethodDefinition("Process", MethodAttributes.Public, a1.MainModule.TypeSystem.Void);
+        method1.Body = new MethodBody(method1);
+        method1.Body.GetILProcessor().Append(method1.Body.GetILProcessor().Create(OpCodes.Ret));
+        method1.Parameters.Add(new ParameterDefinition("data", ParameterAttributes.In, a1.MainModule.TypeSystem.Int32));
+        type1.Methods.Add(method1);
+
+        var type2 = AddPublicClass(a2, "MyClass");
+        var method2 = new MethodDefinition("Process", MethodAttributes.Public, a2.MainModule.TypeSystem.Void);
+        method2.Body = new MethodBody(method2);
+        method2.Body.GetILProcessor().Append(method2.Body.GetILProcessor().Create(OpCodes.Ret));
+        method2.Parameters.Add(new ParameterDefinition("data", ParameterAttributes.Out, a2.MainModule.TypeSystem.Int32));
+        type2.Methods.Add(method2);
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.False(result.AreEqual);
+        Assert.Contains(result.Differences, d => d.Contains("Process"));
+    }
 }
