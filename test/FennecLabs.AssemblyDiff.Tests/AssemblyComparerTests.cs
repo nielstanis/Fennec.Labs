@@ -5,16 +5,8 @@ using Xunit;
 
 namespace FennecLabs.AssemblyDiff.Tests;
 
-/// <summary>
-/// Tests for <see cref="AssemblyComparer"/> using minimal in-memory assemblies built
-/// with Mono.Cecil — no .cs compilation or disk writes required.
-/// </summary>
 public class AssemblyComparerTests
 {
-    // ---------------------------------------------------------------------------
-    // Helpers
-    // ---------------------------------------------------------------------------
-
     private static AssemblyDefinition CreateAssembly(string name = "TestAssembly")
     {
         var assemblyName = new AssemblyNameDefinition(name, new Version(1, 0, 0, 0));
@@ -22,7 +14,6 @@ public class AssemblyComparerTests
             assemblyName, name + ".dll", ModuleKind.Dll);
     }
 
-    /// <summary>Adds a public class with no members to the assembly's main module.</summary>
     private static TypeDefinition AddPublicClass(AssemblyDefinition assembly, string typeName)
     {
         var type = new TypeDefinition(
@@ -34,7 +25,6 @@ public class AssemblyComparerTests
         return type;
     }
 
-    /// <summary>Adds an internal (non-public) class to the assembly's main module.</summary>
     private static TypeDefinition AddInternalClass(AssemblyDefinition assembly, string typeName)
     {
         var type = new TypeDefinition(
@@ -46,7 +36,6 @@ public class AssemblyComparerTests
         return type;
     }
 
-    /// <summary>Adds a void method with a simple IL body to the given type.</summary>
     private static MethodDefinition AddVoidMethod(TypeDefinition type, string methodName,
         Action<ILProcessor>? bodyBuilder = null)
     {
@@ -66,10 +55,6 @@ public class AssemblyComparerTests
         return method;
     }
 
-    // ---------------------------------------------------------------------------
-    // Added type tests
-    // ---------------------------------------------------------------------------
-
     [Fact]
     public void Compare_TypeAddedInAssembly2_AppearsInTypesOnlyInAssembly2()
     {
@@ -77,8 +62,7 @@ public class AssemblyComparerTests
         using var a2 = CreateAssembly();
         AddPublicClass(a2, "NewClass");
 
-        var comparer = new AssemblyComparer(a1, a2);
-        var result = comparer.Compare();
+        var result = new AssemblyComparer(a1, a2).Compare();
 
         Assert.Contains("TestNamespace.NewClass", result.TypesOnlyInAssembly2);
         Assert.False(result.AreEqual);
@@ -96,10 +80,6 @@ public class AssemblyComparerTests
         Assert.Contains(result.Differences, d => d.Contains("AddedType") && d.Contains("Assembly2"));
     }
 
-    // ---------------------------------------------------------------------------
-    // Removed type tests
-    // ---------------------------------------------------------------------------
-
     [Fact]
     public void Compare_TypeRemovedFromAssembly2_AppearsInTypesOnlyInAssembly1()
     {
@@ -107,8 +87,7 @@ public class AssemblyComparerTests
         using var a2 = CreateAssembly();
         AddPublicClass(a1, "RemovedClass");
 
-        var comparer = new AssemblyComparer(a1, a2);
-        var result = comparer.Compare();
+        var result = new AssemblyComparer(a1, a2).Compare();
 
         Assert.Contains("TestNamespace.RemovedClass", result.TypesOnlyInAssembly1);
         Assert.False(result.AreEqual);
@@ -126,10 +105,6 @@ public class AssemblyComparerTests
         Assert.Contains(result.Differences, d => d.Contains("RemovedType") && d.Contains("Assembly1"));
     }
 
-    // ---------------------------------------------------------------------------
-    // Visibility change tests
-    // ---------------------------------------------------------------------------
-
     [Fact]
     public void Compare_TypeVisibilityChangedPublicToInternal_CapturedInDifferences()
     {
@@ -144,10 +119,6 @@ public class AssemblyComparerTests
             d => d.Contains("MyClass") && d.Contains("Visibility") || d.Contains("IsPublic"));
         Assert.False(result.AreEqual);
     }
-
-    // ---------------------------------------------------------------------------
-    // Method body / IL operand type tests
-    // ---------------------------------------------------------------------------
 
     [Fact]
     public void Compare_MethodBodyDiffers_StringOperand_CapturedInDifferences()
@@ -208,14 +179,12 @@ public class AssemblyComparerTests
     [Fact]
     public void Compare_MethodBodyWithMethodRefOperand_IsHandledWithoutException()
     {
-        // Verifies that MethodReference operands are serialized without throwing.
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
 
         var type1 = AddPublicClass(a1, "MyClass");
         AddVoidMethod(type1, "Run", il =>
         {
-            // ldc_i4_0 / nop pair — simple identical bodies
             il.Append(il.Create(OpCodes.Nop));
             il.Append(il.Create(OpCodes.Ret));
         });
@@ -227,14 +196,9 @@ public class AssemblyComparerTests
             il.Append(il.Create(OpCodes.Ret));
         });
 
-        // Identical bodies — should not throw
         var ex = Record.Exception(() => new AssemblyComparer(a1, a2).Compare());
         Assert.Null(ex);
     }
-
-    // ---------------------------------------------------------------------------
-    // Truncation test
-    // ---------------------------------------------------------------------------
 
     [Fact]
     public void GenerateReport_MoreThan10TypesOnlyInAssembly1_TruncatesToTen()
@@ -250,14 +214,8 @@ public class AssemblyComparerTests
         Assert.Equal(15, result.TypesOnlyInAssembly1.Count);
 
         var report = result.GenerateReport();
-
-        // Report should mention truncation
         Assert.Contains("... and 5 more", report);
     }
-
-    // ---------------------------------------------------------------------------
-    // Nested type tests
-    // ---------------------------------------------------------------------------
 
     [Fact]
     public void Compare_NestedTypeAddedInAssembly2_IsDetected()
@@ -265,10 +223,8 @@ public class AssemblyComparerTests
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
 
-        // a1 has outer class only
         AddPublicClass(a1, "Outer");
 
-        // a2 has outer class + nested class
         var outer2 = AddPublicClass(a2, "Outer");
         var nested = new TypeDefinition(
             "",
@@ -289,7 +245,6 @@ public class AssemblyComparerTests
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
 
-        // a1 has outer + nested
         var outer1 = AddPublicClass(a1, "Outer");
         var nested1 = new TypeDefinition(
             "",
@@ -298,7 +253,6 @@ public class AssemblyComparerTests
             a1.MainModule.TypeSystem.Object);
         outer1.NestedTypes.Add(nested1);
 
-        // a2 has outer only
         AddPublicClass(a2, "Outer");
 
         var result = new AssemblyComparer(a1, a2).Compare();
@@ -306,10 +260,6 @@ public class AssemblyComparerTests
         Assert.Contains("TestNamespace.Outer/Inner", result.TypesOnlyInAssembly1);
         Assert.False(result.AreEqual);
     }
-
-    // ---------------------------------------------------------------------------
-    // Identical assemblies
-    // ---------------------------------------------------------------------------
 
     [Fact]
     public void Compare_IdenticalEmptyAssemblies_AreEqual()

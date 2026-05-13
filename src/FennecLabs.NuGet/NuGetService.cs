@@ -119,14 +119,10 @@ public class NuGetService
         );
     }
 
-    /// <summary>
-    /// Resolves the target package version, ensures it is available in the global packages folder
-    /// (downloading if needed), then applies <paramref name="extractor"/> to produce a result.
-    /// </summary>
     private async Task<T?> ResolveAndDownloadAsync<T>(
         string packageId,
         string? version,
-        Func<string, ZipArchive, T?> extractor,
+        Func<string, ZipArchive?, T?> extractor,
         CancellationToken ct)
     {
         var repository = await GetRepositoryAsync(ct);
@@ -169,12 +165,9 @@ public class NuGetService
             targetPackage.Identity.Id.ToLowerInvariant(),
             targetPackage.Identity.Version.ToNormalizedString());
 
-        // If the package is already extracted, run the extractor against the on-disk folder.
-        // We represent the on-disk state as a null ZipArchive for the extractor; callers that
-        // only need the packagePath (not the ZipArchive) accept null.
         if (Directory.Exists(packagePath))
         {
-            return extractor(packagePath, null!);
+            return extractor(packagePath, null);
         }
 
         // Download package

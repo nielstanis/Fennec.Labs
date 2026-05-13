@@ -12,18 +12,7 @@ public class ScorecardClient : IDisposable
     private readonly bool _ownsHttpClient;
     private const string BaseUrl = "https://api.securityscorecards.dev";
 
-    /// <summary>
-    /// Creates a <see cref="ScorecardClient"/> with optional dependency injection.
-    /// </summary>
-    /// <param name="httpClient">
-    /// Optional pre-configured <see cref="HttpClient"/>. If null, a default instance is created
-    /// with <see cref="BaseUrl"/> as the base address. The injected client is never disposed by
-    /// this class; only internally created clients are disposed.
-    /// </param>
-    /// <param name="nugetService">
-    /// Optional <see cref="NuGetService"/> used for package metadata lookups. If null, a default
-    /// instance is created.
-    /// </param>
+    // Disposes HttpClient only when created internally; injected clients are owned by the caller.
     public ScorecardClient(HttpClient? httpClient = null, NuGetService? nugetService = null)
     {
         if (httpClient is null)
