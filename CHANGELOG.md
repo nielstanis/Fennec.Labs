@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add download progress spinners via `AnsiConsole.Status()` on compare, reproduce, and instrument NuGet operations (FD-014)
 - Add Spectre.Console 0.55.2 as CLI rendering foundation (FD-006)
 - Add `OutputMode` enum (`Human`, `Json`) and `Json.Options` shared serializer settings used by all command handlers (FD-015)
-- Add `OutputMode` enum (`Fxt`, `Json`) replacing the stringly-typed `WriterFactory.CreateWriter(string, ...)` overload; valid formats are now statically verifiable (FD-012)
+- Add `OutputFormat` enum (`Fxt`, `Json`) replacing the stringly-typed `WriterFactory.CreateWriter(string, ...)` overload; valid formats are now statically verifiable (FD-012)
 - Add `CancellationToken` support to `AssemblyAnalyzer.Analyze()` and all `Writer.WriteOutputAsync` overloads; token is threaded through to `JsonSerializer.SerializeAsync` and `StreamWriter.WriteLineAsync` (FD-012)
 - Add 3 edge-case tests for `AssemblyAnalyzer`: empty assembly, method with no call instructions, deeply nested namespace (FD-012)
 - Extract all command handlers to `Commands/` folder: `InstrumentCommandHandler`, `ScorecardCommandHandler`, `CompareCommandHandler`, `ReproduceCommandHandler`, `FeedsCommandHandler`; `Program.cs` reduced to a thin wiring layer (FD-008)

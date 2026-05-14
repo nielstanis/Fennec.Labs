@@ -121,11 +121,7 @@ internal class InstrumentCommandHandler
                 return 0;
             }
 
-            if (outputMode == OutputMode.Human)
-            {
-                AnsiConsole.MarkupLine(
-                    $"[dim]Found {dllFiles.Count} DLL file(s)[/]");
-            }
+            AnsiConsole.MarkupLine($"[dim]Found {dllFiles.Count} DLL file(s)[/]");
 
             var resolvedVersion = Path.GetFileName(packagePath);
             var packageOutput = Path.Combine(output, packageId, resolvedVersion);
