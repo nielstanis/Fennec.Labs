@@ -491,3 +491,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# fennec labs output folder
+.fennec/
