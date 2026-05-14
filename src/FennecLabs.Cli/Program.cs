@@ -1,4 +1,5 @@
 using System.CommandLine;
+using FennecLabs.Cli;
 using FennecLabs.Cli.Commands;
 using FennecLabs.NuGet;
 using FennecLabs.Scorecard;
@@ -10,6 +11,14 @@ class Program
     static async Task<int> Main(string[] args)
     {
         var rootCommand = new RootCommand("Fennec Labs CLI");
+
+        var globalFormatOption = new Option<string>("--format")
+        {
+            Description = "Output format: human or json (default: human)",
+            DefaultValueFactory = _ => "human",
+            Recursive = true,
+        };
+        rootCommand.Options.Add(globalFormatOption);
 
         // instrument command
         var filenameOption = new Option<string>("--filename", "-f")
@@ -29,9 +38,9 @@ class Program
             Description = "Output folder for instrumentation results (default: .fennec)",
             DefaultValueFactory = _ => ".fennec"
         };
-        var formatOption = new Option<string>("--format", "-F")
+        var fileFormatOption = new Option<string>("--file-format", "-F")
         {
-            Description = "Output format: fxt or json (default: fxt)",
+            Description = "File output format: fxt or json (default: fxt)",
             DefaultValueFactory = _ => "fxt"
         };
 
@@ -40,7 +49,7 @@ class Program
         instrumentCommand.Options.Add(nugetOption);
         instrumentCommand.Options.Add(versionOption);
         instrumentCommand.Options.Add(outputOption);
-        instrumentCommand.Options.Add(formatOption);
+        instrumentCommand.Options.Add(fileFormatOption);
         instrumentCommand.SetAction(async (ParseResult parseResult) =>
         {
             var handler = new InstrumentCommandHandler(new NuGetService());
@@ -49,7 +58,8 @@ class Program
                 parseResult.GetValue(nugetOption),
                 parseResult.GetValue(versionOption),
                 parseResult.GetValue(outputOption) ?? ".fennec",
-                parseResult.GetValue(formatOption) ?? "fxt");
+                parseResult.GetValue(fileFormatOption) ?? "fxt",
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
 
         // scorecard command
@@ -70,7 +80,8 @@ class Program
             var handler = new ScorecardCommandHandler(new ScorecardClient());
             return await handler.ExecuteAsync(
                 parseResult.GetValue(projectPathOption),
-                parseResult.GetValue(reportOption));
+                parseResult.GetValue(reportOption),
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
 
         // compare command
@@ -97,7 +108,10 @@ class Program
             }
 
             var handler = new CompareCommandHandler(new NuGetService());
-            return await handler.ExecuteAsync(nuget, parseResult.GetValue(compareVersionOption));
+            return await handler.ExecuteAsync(
+                nuget,
+                parseResult.GetValue(compareVersionOption),
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
 
         // reproduce command
@@ -136,17 +150,21 @@ class Program
 
             var handler = new ReproduceCommandHandler(new NuGetService());
             return await handler.ExecuteAsync(
-                filename, nuget, parseResult.GetValue(reproduceVersionOption));
+                filename,
+                nuget,
+                parseResult.GetValue(reproduceVersionOption),
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
 
         // feeds command
         var feedsCommand = new Command("feeds", "Manage NuGet feed sources");
 
         var feedsListCommand = new Command("list", "List configured NuGet feeds");
-        feedsListCommand.SetAction(async (ParseResult _) =>
+        feedsListCommand.SetAction(async (ParseResult parseResult) =>
         {
             var handler = new FeedsCommandHandler();
-            return await handler.ExecuteListAsync();
+            return await handler.ExecuteListAsync(
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
         feedsCommand.Subcommands.Add(feedsListCommand);
 
@@ -164,7 +182,8 @@ class Program
             return await handler.ExecuteAddAsync(
                 parseResult.GetValue(feedAddNameOption),
                 parseResult.GetValue(feedAddSourceOption),
-                parseResult.GetValue(feedAddDefaultOption));
+                parseResult.GetValue(feedAddDefaultOption),
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
         feedsCommand.Subcommands.Add(feedsAddCommand);
 
@@ -175,7 +194,9 @@ class Program
         feedsRemoveCommand.SetAction(async (ParseResult parseResult) =>
         {
             var handler = new FeedsCommandHandler();
-            return await handler.ExecuteRemoveAsync(parseResult.GetValue(feedRemoveNameOption));
+            return await handler.ExecuteRemoveAsync(
+                parseResult.GetValue(feedRemoveNameOption),
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
         feedsCommand.Subcommands.Add(feedsRemoveCommand);
 
@@ -187,4 +208,9 @@ class Program
 
         return await rootCommand.Parse(args).InvokeAsync();
     }
+
+    private static OutputMode ResolveOutputMode(string? format) =>
+        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)
+            ? OutputMode.Json
+            : OutputMode.Human;
 }

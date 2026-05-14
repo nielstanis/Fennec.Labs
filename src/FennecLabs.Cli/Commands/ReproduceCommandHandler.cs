@@ -1,7 +1,10 @@
 using System.IO.Compression;
+using System.Text.Json;
 using FennecLabs.AssemblyDiff;
+using FennecLabs.Cli.Rendering;
 using FennecLabs.NuGet;
 using Mono.Cecil;
+using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
 
@@ -14,7 +17,8 @@ internal class ReproduceCommandHandler
         _nugetService = nugetService;
     }
 
-    public async Task<int> ExecuteAsync(string nupkgFilePath, string packageId, string? version)
+    public async Task<int> ExecuteAsync(
+        string nupkgFilePath, string packageId, string? version, OutputMode outputMode)
     {
         if (!File.Exists(nupkgFilePath))
         {
@@ -28,10 +32,6 @@ internal class ReproduceCommandHandler
             return 1;
         }
 
-        Console.WriteLine($"Comparing local package file: {nupkgFilePath}");
-        Console.WriteLine($"With NuGet package: {packageId} {version ?? "latest"}");
-        Console.WriteLine();
-
         string? tempExtractPath = null;
 
         try
@@ -39,24 +39,43 @@ internal class ReproduceCommandHandler
             tempExtractPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempExtractPath);
 
-            Console.WriteLine($"Extracting local package to: {tempExtractPath}");
-            await ExtractNupkgFileAsync(nupkgFilePath, tempExtractPath);
-            Console.WriteLine("Extraction complete.");
-            Console.WriteLine();
+            if (outputMode == OutputMode.Human)
+            {
+                await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
+                    .SpinnerStyle(Style.Parse("grey"))
+                    .StartAsync($"Extracting {Path.GetFileName(nupkgFilePath)}…", async _ =>
+                    {
+                        await ExtractNupkgFileAsync(nupkgFilePath, tempExtractPath);
+                    });
+            }
+            else
+            {
+                await ExtractNupkgFileAsync(nupkgFilePath, tempExtractPath);
+            }
 
-            var localContents = GetPackageContentsFromDirectory(tempExtractPath);
-            var localDlls = localContents
+            var localDlls = GetPackageContentsFromDirectory(tempExtractPath)
                 .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
                     && !f.Path.Contains("_._"))
                 .ToDictionary(f => f.Path, f => f);
 
-            Console.WriteLine($"Downloading NuGet package: {packageId} {version ?? "latest"}");
-            var feedPackagePath = await _nugetService.DownloadPackageAsync(packageId, version);
-            Console.WriteLine($"Downloaded to: {feedPackagePath}");
-            Console.WriteLine();
+            string feedPackagePath = string.Empty;
+            if (outputMode == OutputMode.Human)
+            {
+                await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
+                    .SpinnerStyle(Style.Parse("grey"))
+                    .StartAsync($"Downloading {packageId} {version ?? "latest"} from feed…", async _ =>
+                    {
+                        feedPackagePath = await _nugetService.DownloadPackageAsync(packageId, version);
+                    });
+            }
+            else
+            {
+                feedPackagePath = await _nugetService.DownloadPackageAsync(packageId, version);
+            }
 
-            var feedContents = await _nugetService.GetPackageContentsAsync(packageId, version);
-            var feedDlls = feedContents
+            var feedDlls = (await _nugetService.GetPackageContentsAsync(packageId, version))
                 .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
                     && !f.Path.Contains("_._"))
                 .ToDictionary(f => f.Path, f => f);
@@ -65,81 +84,74 @@ internal class ReproduceCommandHandler
             var onlyInLocal = localDlls.Keys.Except(feedDlls.Keys).ToList();
             var onlyInFeed = feedDlls.Keys.Except(localDlls.Keys).ToList();
 
-            Console.WriteLine($"Found {matchingDlls.Count} matching DLL file(s) to compare");
-            if (onlyInLocal.Count > 0)
-                Console.WriteLine($"  {onlyInLocal.Count} DLL(s) only in local package");
-            if (onlyInFeed.Count > 0)
-                Console.WriteLine($"  {onlyInFeed.Count} DLL(s) only in feed package");
-            Console.WriteLine();
-
             if (matchingDlls.Count == 0)
             {
-                Console.WriteLine("No matching DLL files found to compare.");
+                Console.Error.WriteLine("No matching DLL files found to compare.");
                 return 0;
             }
 
+            var dllResults = new List<DllDiffResult>();
             int identicalCount = 0;
             int differentCount = 0;
             int errorCount = 0;
 
             foreach (var dllPath in matchingDlls)
             {
-                Console.WriteLine($"Comparing {dllPath}...");
                 try
                 {
-                    var localDll = localDlls[dllPath];
-                    var feedDll = feedDlls[dllPath];
+                    using var assembly1 = AssemblyDefinition.ReadAssembly(localDlls[dllPath].FullPath);
+                    using var assembly2 = AssemblyDefinition.ReadAssembly(feedDlls[dllPath].FullPath);
+                    var result = new AssemblyComparer(assembly1, assembly2).Compare();
 
-                    using var assembly1 = AssemblyDefinition.ReadAssembly(localDll.FullPath);
-                    using var assembly2 = AssemblyDefinition.ReadAssembly(feedDll.FullPath);
-
-                    var comparer = new AssemblyComparer(assembly1, assembly2);
-                    var result = comparer.Compare();
-
-                    if (result.AreEqual)
-                    {
-                        Console.WriteLine("  ✓ Identical");
-                        identicalCount++;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"  ✗ Differences found ({result.Differences.Count} difference(s))");
-                        differentCount++;
-
-                        if (result.TypesOnlyInAssembly1.Count > 0)
-                            Console.WriteLine(
-                                $"    - {result.TypesOnlyInAssembly1.Count} type(s) only in local package");
-                        if (result.TypesOnlyInAssembly2.Count > 0)
-                            Console.WriteLine(
-                                $"    - {result.TypesOnlyInAssembly2.Count} type(s) only in feed package");
-                        if (result.MethodBodyDifferences.Count > 0)
-                            Console.WriteLine(
-                                $"    - {result.MethodBodyDifferences.Count} method(s) with body differences");
-
-                        Console.WriteLine();
-                        Console.WriteLine("  Detailed Report:");
-                        var report = result.GenerateReport();
-                        foreach (var line in report.Split('\n'))
-                        {
-                            if (!string.IsNullOrWhiteSpace(line))
-                                Console.WriteLine($"    {line}");
-                        }
-                    }
+                    dllResults.Add(new DllDiffResult(dllPath, result, null));
+                    if (result.AreEqual) identicalCount++;
+                    else differentCount++;
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"  ✗ Error: {ex.Message}");
+                    dllResults.Add(new DllDiffResult(dllPath, null, ex.Message));
                     errorCount++;
                 }
-                Console.WriteLine();
             }
 
-            Console.WriteLine("=== Comparison Summary ===");
-            Console.WriteLine($"Local Package: {nupkgFilePath}");
-            Console.WriteLine($"Feed Package: {packageId} {version ?? "latest"}");
-            Console.WriteLine($"  Identical: {identicalCount}");
-            Console.WriteLine($"  Different: {differentCount}");
-            Console.WriteLine($"  Errors: {errorCount}");
+            if (outputMode == OutputMode.Json)
+            {
+                var output = new
+                {
+                    packageId,
+                    localFile = nupkgFilePath,
+                    feedVersion = version ?? "latest",
+                    perDll = dllResults.Select(d => new
+                    {
+                        dllPath = d.DllPath,
+                        areEqual = d.Result?.AreEqual,
+                        differences = d.Result?.Differences,
+                        typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
+                        typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
+                        methodBodyDifferences = d.Result?.MethodBodyDifferences.Select(m => new
+                        {
+                            typeName = m.TypeName,
+                            methodSignature = m.MethodSignature,
+                            instructionDifferences = m.InstructionDifferences,
+                        }),
+                        error = d.Error,
+                    }),
+                    onlyInLocal,
+                    onlyInFeed,
+                    summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
+                };
+                Console.WriteLine(JsonSerializer.Serialize(output, Json.Options));
+                return errorCount > 0 ? 1 : 0;
+            }
+
+            DiffRenderer.Render(
+                $"{Path.GetFileName(nupkgFilePath)} vs {packageId} {version ?? "latest"}",
+                dllResults,
+                onlyInLocal,
+                onlyInFeed,
+                "local",
+                "feed");
+
             return errorCount > 0 ? 1 : 0;
         }
         catch (Exception ex)
@@ -151,14 +163,8 @@ internal class ReproduceCommandHandler
         {
             if (tempExtractPath != null && Directory.Exists(tempExtractPath))
             {
-                try
-                {
-                    Directory.Delete(tempExtractPath, recursive: true);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
+                try { Directory.Delete(tempExtractPath, recursive: true); }
+                catch { /* ignore cleanup errors */ }
             }
         }
     }
@@ -187,20 +193,15 @@ internal class ReproduceCommandHandler
 
     private static List<PackageFileInfo> GetPackageContentsFromDirectory(string packagePath)
     {
-        var files = Directory.GetFiles(packagePath, "*", SearchOption.AllDirectories)
+        return Directory.GetFiles(packagePath, "*", SearchOption.AllDirectories)
             .Select(f => new FileInfo(f))
             .OrderBy(f => f.FullName)
-            .ToList();
-
-        return files.Select(f =>
-        {
-            var relativePath = Path.GetRelativePath(packagePath, f.FullName);
-            return new PackageFileInfo
+            .Select(f => new PackageFileInfo
             {
-                Path = relativePath,
+                Path = Path.GetRelativePath(packagePath, f.FullName),
                 FullPath = f.FullName,
-                Size = f.Length
-            };
-        }).ToList();
+                Size = f.Length,
+            })
+            .ToList();
     }
 }

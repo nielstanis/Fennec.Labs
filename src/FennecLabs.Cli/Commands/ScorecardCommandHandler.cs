@@ -1,5 +1,8 @@
+using System.Text.Json;
+using FennecLabs.Cli.Rendering;
 using FennecLabs.DotNetCli;
 using FennecLabs.Scorecard;
+using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
 
@@ -12,10 +15,14 @@ internal class ScorecardCommandHandler
         _scorecardClient = scorecardClient;
     }
 
-    public async Task<int> ExecuteAsync(string? projectPath, bool generateReport)
+    public async Task<int> ExecuteAsync(string? projectPath, bool generateReport, OutputMode outputMode)
     {
-        Console.WriteLine($"Analyzing project: {projectPath ?? "all projects"}");
-        Console.WriteLine();
+        if (outputMode == OutputMode.Human)
+        {
+            AnsiConsole.MarkupLine(
+                $"[dim]Analyzing {Markup.Escape(projectPath ?? "all projects")}…[/]");
+            AnsiConsole.WriteLine();
+        }
 
         var packageList = projectPath != null
             ? await DotnetCliExecutor.GetPackageListAsync(projectPath)
@@ -23,36 +30,49 @@ internal class ScorecardCommandHandler
 
         if (packageList == null || packageList.Projects.Count == 0)
         {
-            Console.WriteLine("No packages found in the project.");
+            if (outputMode == OutputMode.Json)
+                Console.WriteLine(JsonSerializer.Serialize(new { packages = Array.Empty<object>() }, Json.Options));
+            else
+                AnsiConsole.MarkupLine("[yellow]No packages found in the project.[/]");
             return 0;
         }
 
         var project = packageList.Projects[0];
         if (project.Frameworks.Count == 0)
         {
-            Console.WriteLine("No frameworks found in the project.");
+            if (outputMode == OutputMode.Json)
+                Console.WriteLine(JsonSerializer.Serialize(new { packages = Array.Empty<object>() }, Json.Options));
+            else
+                AnsiConsole.MarkupLine("[yellow]No frameworks found in the project.[/]");
             return 0;
         }
 
         var framework = project.Frameworks[0];
-        var topLevelPackages = framework.TopLevelPackages;
-        var transitivePackages = framework.TransitivePackages;
-        var allPackages = topLevelPackages.Concat(transitivePackages).ToList();
+        var allPackages = framework.TopLevelPackages.Concat(framework.TransitivePackages).ToList();
 
         if (allPackages.Count == 0)
         {
-            Console.WriteLine("No packages found in the project.");
+            if (outputMode == OutputMode.Json)
+                Console.WriteLine(JsonSerializer.Serialize(new { packages = Array.Empty<object>() }, Json.Options));
+            else
+                AnsiConsole.MarkupLine("[yellow]No packages found in the project.[/]");
             return 0;
         }
 
-        Console.WriteLine($"Found {topLevelPackages.Count} top-level and {transitivePackages.Count} transitive package(s):");
-        Console.WriteLine();
+        if (outputMode == OutputMode.Human)
+        {
+            AnsiConsole.MarkupLine(
+                $"[dim]Found {framework.TopLevelPackages.Count} top-level and " +
+                $"{framework.TransitivePackages.Count} transitive package(s)[/]");
+            AnsiConsole.WriteLine();
+        }
 
         var results = new List<PackageScorecardResult>();
 
         foreach (var package in allPackages)
         {
-            Console.Write($"Processing {package.Id} {package.ResolvedVersion}... ");
+            if (outputMode == OutputMode.Human)
+                AnsiConsole.Markup($"  [dim]Fetching {Markup.Escape(package.Id)} {Markup.Escape(package.ResolvedVersion ?? "")}…[/] ");
 
             try
             {
@@ -60,25 +80,24 @@ internal class ScorecardCommandHandler
                     package.Id,
                     package.ResolvedVersion);
 
-                if (scorecardResult != null)
+                results.Add(new PackageScorecardResult
                 {
-                    results.Add(new PackageScorecardResult
-                    {
-                        PackageId = package.Id,
-                        PackageVersion = package.ResolvedVersion ?? "unknown",
-                        Scorecard = scorecardResult
-                    });
-                    Console.WriteLine($"✓ Score: {scorecardResult.Score:F2}/10");
-                }
-                else
+                    PackageId = package.Id,
+                    PackageVersion = package.ResolvedVersion ?? "unknown",
+                    Scorecard = scorecardResult,
+                });
+
+                if (outputMode == OutputMode.Human)
                 {
-                    results.Add(new PackageScorecardResult
+                    if (scorecardResult != null)
                     {
-                        PackageId = package.Id,
-                        PackageVersion = package.ResolvedVersion ?? "unknown",
-                        Scorecard = null
-                    });
-                    Console.WriteLine("No scorecard available");
+                        var color = ColorTheme.ForScore(scorecardResult.Score);
+                        AnsiConsole.MarkupLine($"[{color}]{scorecardResult.Score:F1}/10[/]");
+                    }
+                    else
+                    {
+                        AnsiConsole.MarkupLine("[grey]no scorecard[/]");
+                    }
                 }
             }
             catch (Exception ex)
@@ -87,90 +106,48 @@ internal class ScorecardCommandHandler
                 {
                     PackageId = package.Id,
                     PackageVersion = package.ResolvedVersion ?? "unknown",
-                    Scorecard = null,
-                    Error = ex.Message
+                    Error = ex.Message,
                 });
-                Console.Error.WriteLine($"Error: {ex.Message}");
+                if (outputMode == OutputMode.Human)
+                    AnsiConsole.MarkupLine($"[red]error[/]");
+                else
+                    Console.Error.WriteLine($"Error fetching {package.Id}: {ex.Message}");
             }
         }
 
-        PrintSummary(results);
+        if (outputMode == OutputMode.Json)
+        {
+            var output = new
+            {
+                packages = results.Select(r => new
+                {
+                    packageId = r.PackageId,
+                    packageVersion = r.PackageVersion,
+                    score = r.Scorecard?.Score,
+                    checks = r.Scorecard?.Checks.Select(c => new
+                    {
+                        name = c.Name,
+                        score = c.Score,
+                        reason = c.Reason,
+                    }),
+                    error = r.Error,
+                }),
+            };
+            Console.WriteLine(JsonSerializer.Serialize(output, Json.Options));
+            return 0;
+        }
+
+        AnsiConsole.WriteLine();
+        ScorecardRenderer.Render(results);
 
         if (generateReport)
         {
             var reportPath = await GenerateHtmlReportAsync(packageList, results, projectPath);
-            Console.WriteLine();
-            Console.WriteLine($"HTML report generated: {reportPath}");
+            AnsiConsole.WriteLine();
+            AnsiConsole.MarkupLine($"[dim]HTML report:[/] {Markup.Escape(reportPath)}");
         }
 
         return 0;
-    }
-
-    private static void PrintSummary(List<PackageScorecardResult> results)
-    {
-        Console.WriteLine();
-        Console.WriteLine("=== Summary ===");
-        Console.WriteLine();
-
-        var packagesWithScorecards = results.Where(r => r.Scorecard != null).ToList();
-        var packagesWithoutScorecards = results
-            .Where(r => r.Scorecard == null && string.IsNullOrEmpty(r.Error))
-            .ToList();
-        var packagesWithErrors = results.Where(r => !string.IsNullOrEmpty(r.Error)).ToList();
-
-        if (packagesWithScorecards.Count > 0)
-        {
-            Console.WriteLine($"Packages with scorecards ({packagesWithScorecards.Count}):");
-            foreach (var result in packagesWithScorecards.OrderByDescending(r => r.Scorecard!.Score))
-                Console.WriteLine($"  {result.PackageId} {result.PackageVersion}: {result.Scorecard!.Score:F2}/10");
-            Console.WriteLine();
-        }
-
-        if (packagesWithoutScorecards.Count > 0)
-        {
-            Console.WriteLine($"Packages without scorecards ({packagesWithoutScorecards.Count}):");
-            foreach (var result in packagesWithoutScorecards)
-                Console.WriteLine($"  {result.PackageId} {result.PackageVersion}");
-            Console.WriteLine();
-        }
-
-        if (packagesWithErrors.Count > 0)
-        {
-            Console.WriteLine($"Packages with errors ({packagesWithErrors.Count}):");
-            foreach (var result in packagesWithErrors)
-                Console.WriteLine($"  {result.PackageId} {result.PackageVersion}: {result.Error}");
-            Console.WriteLine();
-        }
-
-        if (packagesWithScorecards.Count > 0)
-        {
-            Console.WriteLine("=== Detailed Scorecard Information ===");
-            Console.WriteLine();
-
-            foreach (var result in packagesWithScorecards)
-            {
-                var sc = result.Scorecard!;
-                Console.WriteLine($"Package: {result.PackageId} {result.PackageVersion}");
-                Console.WriteLine($"Repository: {sc.Repo.Name}");
-                Console.WriteLine($"Score: {sc.Score:F2}/10");
-                Console.WriteLine($"Date: {sc.Date}");
-                Console.WriteLine($"Scorecard Version: {sc.Scorecard.Version}");
-
-                if (sc.Checks.Count > 0)
-                {
-                    Console.WriteLine("Checks:");
-                    foreach (var check in sc.Checks.OrderByDescending(c => c.Score))
-                    {
-                        var status = check.Score == -1 ? "N/A" : $"{check.Score}/10";
-                        Console.WriteLine($"  {check.Name}: {status}");
-                        if (!string.IsNullOrWhiteSpace(check.Reason))
-                            Console.WriteLine($"    {check.Reason}");
-                    }
-                }
-
-                Console.WriteLine();
-            }
-        }
     }
 
     private static async Task<string> GenerateHtmlReportAsync(
@@ -181,10 +158,7 @@ internal class ScorecardCommandHandler
         var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
         var reportFileName = $"scorecard-report-{timestamp}.html";
         var reportPath = Path.Combine(Directory.GetCurrentDirectory(), reportFileName);
-
-        var html = BuildHtmlReport(packageList, results, projectPath);
-
-        await File.WriteAllTextAsync(reportPath, html);
+        await File.WriteAllTextAsync(reportPath, BuildHtmlReport(packageList, results, projectPath));
         return reportPath;
     }
 
@@ -442,13 +416,5 @@ internal class ScorecardCommandHandler
             .Replace(">", "&gt;")
             .Replace("\"", "&quot;")
             .Replace("'", "&#39;");
-    }
-
-    internal class PackageScorecardResult
-    {
-        public string PackageId { get; set; } = string.Empty;
-        public string PackageVersion { get; set; } = string.Empty;
-        public ScorecardResult? Scorecard { get; set; }
-        public string? Error { get; set; }
     }
 }

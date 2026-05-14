@@ -1,30 +1,56 @@
+using System.Text.Json;
 using FennecLabs.NuGet;
+using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
 
 internal class FeedsCommandHandler
 {
-    public async Task<int> ExecuteListAsync()
+    public async Task<int> ExecuteListAsync(OutputMode outputMode)
     {
         var feedService = new FeedService();
         var feeds = await feedService.GetAllFeedsAsync();
 
-        if (feeds.Count == 0)
+        if (outputMode == OutputMode.Json)
         {
-            Console.WriteLine("No feeds configured.");
+            var output = new
+            {
+                feeds = feeds.Select(f => new
+                {
+                    name = f.Name,
+                    source = f.Source,
+                    isDefault = f.IsDefault,
+                }),
+            };
+            Console.WriteLine(JsonSerializer.Serialize(output, Json.Options));
             return 0;
         }
 
-        Console.WriteLine("Configured feeds:");
+        if (feeds.Count == 0)
+        {
+            AnsiConsole.MarkupLine("[grey]No feeds configured.[/]");
+            return 0;
+        }
+
+        var table = new Table()
+            .Border(TableBorder.Rounded)
+            .AddColumn(new TableColumn("[bold]Name[/]"))
+            .AddColumn(new TableColumn("[bold]Source[/]"))
+            .AddColumn(new TableColumn("[bold]Default[/]").Centered());
+
         foreach (var feed in feeds)
         {
-            var marker = feed.IsDefault ? " (default)" : "";
-            Console.WriteLine($"  {feed.Name}{marker} — {feed.Source}");
+            table.AddRow(
+                Markup.Escape(feed.Name),
+                Markup.Escape(feed.Source),
+                feed.IsDefault ? "[green]✓[/]" : "");
         }
+
+        AnsiConsole.Write(table);
         return 0;
     }
 
-    public async Task<int> ExecuteAddAsync(string? name, string? source, bool setDefault)
+    public async Task<int> ExecuteAddAsync(string? name, string? source, bool setDefault, OutputMode outputMode)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -41,7 +67,12 @@ internal class FeedsCommandHandler
         {
             var feedService = new FeedService();
             await feedService.AddFeedAsync(name, source, setDefault);
-            Console.WriteLine($"Feed '{name}' added.");
+
+            if (outputMode == OutputMode.Json)
+                Console.WriteLine(JsonSerializer.Serialize(new { status = $"Feed '{name}' added." }, Json.Options));
+            else
+                AnsiConsole.MarkupLine($"[green]✓[/] Feed '[bold]{Markup.Escape(name)}[/]' added.");
+
             return 0;
         }
         catch (Exception ex)
@@ -51,7 +82,7 @@ internal class FeedsCommandHandler
         }
     }
 
-    public async Task<int> ExecuteRemoveAsync(string? name)
+    public async Task<int> ExecuteRemoveAsync(string? name, OutputMode outputMode)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -63,7 +94,12 @@ internal class FeedsCommandHandler
         {
             var configManager = new ConfigurationManager();
             await configManager.RemoveFeedAsync(name);
-            Console.WriteLine($"Feed '{name}' removed.");
+
+            if (outputMode == OutputMode.Json)
+                Console.WriteLine(JsonSerializer.Serialize(new { status = $"Feed '{name}' removed." }, Json.Options));
+            else
+                AnsiConsole.MarkupLine($"[green]✓[/] Feed '[bold]{Markup.Escape(name)}[/]' removed.");
+
             return 0;
         }
         catch (ArgumentException ex)

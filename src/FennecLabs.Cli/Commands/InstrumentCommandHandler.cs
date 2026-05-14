@@ -1,6 +1,9 @@
+using System.Text.Json;
 using FennecLabs.Instrumentation;
 using FennecLabs.Instrumentation.Output;
+using FennecLabs.Instrumentation.Result;
 using FennecLabs.NuGet;
+using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
 
@@ -18,18 +21,20 @@ internal class InstrumentCommandHandler
         string? nuget,
         string? version,
         string output,
-        string format)
+        string fileFormat,
+        OutputMode outputMode)
     {
         if (!string.IsNullOrWhiteSpace(nuget))
-            return await InstrumentNuGetPackageAsync(nuget, version, output, format);
+            return await InstrumentNuGetPackageAsync(nuget, version, output, fileFormat, outputMode);
         if (!string.IsNullOrWhiteSpace(filename))
-            return await InstrumentAssemblyAsync(filename, output, format);
+            return await InstrumentAssemblyAsync(filename, output, fileFormat, outputMode);
 
         Console.Error.WriteLine("Either --filename or --nuget must be specified.");
         return 1;
     }
 
-    private static async Task<int> InstrumentAssemblyAsync(string filename, string output, string format)
+    private static async Task<int> InstrumentAssemblyAsync(
+        string filename, string output, string fileFormat, OutputMode outputMode)
     {
         if (!File.Exists(filename))
         {
@@ -37,7 +42,8 @@ internal class InstrumentCommandHandler
             return 1;
         }
 
-        Console.WriteLine($"Instrumenting assembly: {filename}");
+        if (outputMode == OutputMode.Human)
+            AnsiConsole.MarkupLine($"[dim]Instrumenting {Markup.Escape(filename)}…[/]");
 
         var analyzer = new AssemblyAnalyzer(filename);
         var result = analyzer.Analyze();
@@ -48,25 +54,38 @@ internal class InstrumentCommandHandler
             return 1;
         }
 
-        var writer = WriterFactory.CreateWriter(ParseFormat(format), output);
-        await writer.WriteOutputAsync(result);
+        if (outputMode == OutputMode.Json)
+        {
+            Console.WriteLine(JsonSerializer.Serialize(FlattenInvocations(result), Json.Options));
+            return 0;
+        }
 
-        Console.WriteLine($"Instrumentation complete. Output written to {output}/");
+        var writer = WriterFactory.CreateWriter(ParseFileFormat(fileFormat), output);
+        await writer.WriteOutputAsync(result);
+        AnsiConsole.MarkupLine($"[dim]Output written to[/] {Markup.Escape(output)}/");
         return 0;
     }
 
     private async Task<int> InstrumentNuGetPackageAsync(
-        string packageId,
-        string? version,
-        string output,
-        string format)
+        string packageId, string? version, string output, string fileFormat, OutputMode outputMode)
     {
-        Console.WriteLine($"Downloading NuGet package: {packageId} {version ?? "latest"}");
-
         try
         {
-            var packagePath = await _nugetService.DownloadPackageAsync(packageId, version);
-            Console.WriteLine($"Package downloaded to: {packagePath}");
+            string packagePath = string.Empty;
+            if (outputMode == OutputMode.Human)
+            {
+                await AnsiConsole.Status()
+                    .Spinner(Spinner.Known.Dots)
+                    .SpinnerStyle(Style.Parse("grey"))
+                    .StartAsync($"Downloading {packageId} {version ?? "latest"}…", async _ =>
+                    {
+                        packagePath = await _nugetService.DownloadPackageAsync(packageId, version);
+                    });
+            }
+            else
+            {
+                packagePath = await _nugetService.DownloadPackageAsync(packageId, version);
+            }
 
             var contents = await _nugetService.GetPackageContentsAsync(packageId, version);
             var dllFiles = contents
@@ -76,25 +95,48 @@ internal class InstrumentCommandHandler
 
             if (dllFiles.Count == 0)
             {
-                Console.WriteLine("No DLL files found in the package.");
+                Console.Error.WriteLine("No DLL files found in the package.");
                 return 0;
             }
 
-            Console.WriteLine($"Found {dllFiles.Count} DLL file(s) in the package:");
-            foreach (var dll in dllFiles)
-                Console.WriteLine($"  - {dll.Path}");
-            Console.WriteLine();
+            if (outputMode == OutputMode.Json)
+            {
+                var dllOutputs = new List<object>();
+                foreach (var dll in dllFiles)
+                {
+                    var analyzer = new AssemblyAnalyzer(dll.FullPath);
+                    var result = analyzer.Analyze();
+                    if (result.HasError)
+                    {
+                        Console.Error.WriteLine($"Error analyzing {dll.Path}: {result.ExceptionOccurred?.Message}");
+                        continue;
+                    }
+                    dllOutputs.Add(new
+                    {
+                        dllPath = dll.Path,
+                        invocations = FlattenInvocations(result),
+                    });
+                }
+                Console.WriteLine(JsonSerializer.Serialize(dllOutputs, Json.Options));
+                return 0;
+            }
+
+            if (outputMode == OutputMode.Human)
+            {
+                AnsiConsole.MarkupLine(
+                    $"[dim]Found {dllFiles.Count} DLL file(s)[/]");
+            }
 
             var resolvedVersion = Path.GetFileName(packagePath);
             var packageOutput = Path.Combine(output, packageId, resolvedVersion);
-
-            var writer = WriterFactory.CreateWriter(ParseFormat(format), packageOutput);
+            var writer = WriterFactory.CreateWriter(ParseFileFormat(fileFormat), packageOutput);
             int successCount = 0;
             int errorCount = 0;
 
             foreach (var dll in dllFiles)
             {
-                Console.Write($"Instrumenting {dll.Path}... ");
+                if (outputMode == OutputMode.Human)
+                    AnsiConsole.Markup($"  [dim]{Markup.Escape(dll.Path)}[/]… ");
                 try
                 {
                     var analyzer = new AssemblyAnalyzer(dll.FullPath);
@@ -104,24 +146,34 @@ internal class InstrumentCommandHandler
                     {
                         Console.Error.WriteLine($"Error: {result.ExceptionOccurred?.Message}");
                         errorCount++;
+                        if (outputMode == OutputMode.Human)
+                            AnsiConsole.MarkupLine("[red]✗[/]");
                     }
                     else
                     {
                         await writer.WriteOutputAsync(result, dll.Path);
-                        Console.WriteLine("✓");
                         successCount++;
+                        if (outputMode == OutputMode.Human)
+                            AnsiConsole.MarkupLine("[green]✓[/]");
                     }
                 }
                 catch (Exception ex)
                 {
                     Console.Error.WriteLine($"Error: {ex.Message}");
                     errorCount++;
+                    if (outputMode == OutputMode.Human)
+                        AnsiConsole.MarkupLine("[red]✗[/]");
                 }
             }
 
-            Console.WriteLine();
-            Console.WriteLine($"Instrumentation complete: {successCount} succeeded, {errorCount} failed.");
-            Console.WriteLine($"Output written to {packageOutput}/");
+            if (outputMode == OutputMode.Human)
+            {
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine(
+                    $"[dim]Complete:[/] [green]{successCount} succeeded[/], [red]{errorCount} failed[/]");
+                AnsiConsole.MarkupLine($"[dim]Output written to[/] {Markup.Escape(packageOutput)}/");
+            }
+
             return errorCount > 0 ? 1 : 0;
         }
         catch (Exception ex)
@@ -131,7 +183,20 @@ internal class InstrumentCommandHandler
         }
     }
 
-    private static OutputFormat ParseFormat(string format) =>
+    private static IEnumerable<object> FlattenInvocations(AssemblyResult result) =>
+        result.Types.SelectMany(t =>
+            t.Methods.SelectMany(m =>
+                m.Invocations.Select(i => new
+                {
+                    type = t.ClassType,
+                    method = m.Name,
+                    parameters = m.Parameters,
+                    invocation = i.Invocation,
+                    returnType = i.ReturnType,
+                    sequence = i.Sequence,
+                })));
+
+    private static OutputFormat ParseFileFormat(string format) =>
         string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)
             ? OutputFormat.Json
             : OutputFormat.Fxt;

@@ -1,7 +1,10 @@
+using System.Text.Json;
 using FennecLabs.AssemblyDiff;
+using FennecLabs.Cli.Rendering;
 using FennecLabs.NuGet;
 using Mono.Cecil;
 using NuGet.Versioning;
+using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
 
@@ -14,10 +17,8 @@ internal class CompareCommandHandler
         _nugetService = nugetService;
     }
 
-    public async Task<int> ExecuteAsync(string packageId, string? version)
+    public async Task<int> ExecuteAsync(string packageId, string? version, OutputMode outputMode)
     {
-        Console.WriteLine($"Comparing NuGet package: {packageId}");
-
         try
         {
             var allVersions = await _nugetService.GetPackageVersionsAsync(packageId, includePrerelease: false);
@@ -25,7 +26,7 @@ internal class CompareCommandHandler
 
             if (sortedVersions.Count < 2)
             {
-                Console.WriteLine($"Package '{packageId}' has less than 2 versions. Cannot compare.");
+                Console.Error.WriteLine($"Package '{packageId}' has less than 2 versions. Cannot compare.");
                 return 0;
             }
 
@@ -63,24 +64,21 @@ internal class CompareCommandHandler
                 previousVersion = sortedVersions[1];
             }
 
-            Console.WriteLine($"Comparing version {currentVersion} with previous version {previousVersion}");
-            Console.WriteLine();
+            var currentVersionStr = currentVersion.ToNormalizedString();
+            var previousVersionStr = previousVersion.ToNormalizedString();
 
-            Console.WriteLine($"Downloading version {currentVersion}...");
-            var currentPackagePath = await _nugetService.DownloadPackageAsync(
-                packageId, currentVersion.ToNormalizedString());
-            Console.WriteLine($"Downloaded to: {currentPackagePath}");
+            string currentPackagePath = await DownloadWithStatus(
+                packageId, currentVersionStr,
+                $"Downloading {packageId} {currentVersionStr}…",
+                outputMode);
 
-            Console.WriteLine($"Downloading version {previousVersion}...");
-            var previousPackagePath = await _nugetService.DownloadPackageAsync(
-                packageId, previousVersion.ToNormalizedString());
-            Console.WriteLine($"Downloaded to: {previousPackagePath}");
-            Console.WriteLine();
+            string previousPackagePath = await DownloadWithStatus(
+                packageId, previousVersionStr,
+                $"Downloading {packageId} {previousVersionStr}…",
+                outputMode);
 
-            var currentContents = await _nugetService.GetPackageContentsAsync(
-                packageId, currentVersion.ToNormalizedString());
-            var previousContents = await _nugetService.GetPackageContentsAsync(
-                packageId, previousVersion.ToNormalizedString());
+            var currentContents = await _nugetService.GetPackageContentsAsync(packageId, currentVersionStr);
+            var previousContents = await _nugetService.GetPackageContentsAsync(packageId, previousVersionStr);
 
             var currentDlls = currentContents
                 .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
@@ -96,81 +94,74 @@ internal class CompareCommandHandler
             var onlyInCurrent = currentDlls.Keys.Except(previousDlls.Keys).ToList();
             var onlyInPrevious = previousDlls.Keys.Except(currentDlls.Keys).ToList();
 
-            Console.WriteLine($"Found {matchingDlls.Count} matching DLL file(s) to compare");
-            if (onlyInCurrent.Count > 0)
-                Console.WriteLine($"  {onlyInCurrent.Count} DLL(s) only in version {currentVersion}");
-            if (onlyInPrevious.Count > 0)
-                Console.WriteLine($"  {onlyInPrevious.Count} DLL(s) only in version {previousVersion}");
-            Console.WriteLine();
-
             if (matchingDlls.Count == 0)
             {
-                Console.WriteLine("No matching DLL files found to compare.");
+                Console.Error.WriteLine("No matching DLL files found to compare.");
                 return 0;
             }
 
+            var dllResults = new List<DllDiffResult>();
             int identicalCount = 0;
             int differentCount = 0;
             int errorCount = 0;
 
             foreach (var dllPath in matchingDlls)
             {
-                Console.WriteLine($"Comparing {dllPath}...");
                 try
                 {
-                    var currentDll = currentDlls[dllPath];
-                    var previousDll = previousDlls[dllPath];
+                    using var assembly1 = AssemblyDefinition.ReadAssembly(previousDlls[dllPath].FullPath);
+                    using var assembly2 = AssemblyDefinition.ReadAssembly(currentDlls[dllPath].FullPath);
+                    var result = new AssemblyComparer(assembly1, assembly2).Compare();
 
-                    using var assembly1 = AssemblyDefinition.ReadAssembly(previousDll.FullPath);
-                    using var assembly2 = AssemblyDefinition.ReadAssembly(currentDll.FullPath);
-
-                    var comparer = new AssemblyComparer(assembly1, assembly2);
-                    var result = comparer.Compare();
-
-                    if (result.AreEqual)
-                    {
-                        Console.WriteLine("  ✓ Identical");
-                        identicalCount++;
-                    }
-                    else
-                    {
-                        Console.WriteLine($"  ✗ Differences found ({result.Differences.Count} difference(s))");
-                        differentCount++;
-
-                        if (result.TypesOnlyInAssembly1.Count > 0)
-                            Console.WriteLine(
-                                $"    - {result.TypesOnlyInAssembly1.Count} type(s) only in {previousVersion}");
-                        if (result.TypesOnlyInAssembly2.Count > 0)
-                            Console.WriteLine(
-                                $"    - {result.TypesOnlyInAssembly2.Count} type(s) only in {currentVersion}");
-                        if (result.MethodBodyDifferences.Count > 0)
-                            Console.WriteLine(
-                                $"    - {result.MethodBodyDifferences.Count} method(s) with body differences");
-
-                        Console.WriteLine();
-                        Console.WriteLine("  Detailed Report:");
-                        var report = result.GenerateReport();
-                        foreach (var line in report.Split('\n'))
-                        {
-                            if (!string.IsNullOrWhiteSpace(line))
-                                Console.WriteLine($"    {line}");
-                        }
-                    }
+                    dllResults.Add(new DllDiffResult(dllPath, result, null));
+                    if (result.AreEqual) identicalCount++;
+                    else differentCount++;
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"  ✗ Error: {ex.Message}");
+                    dllResults.Add(new DllDiffResult(dllPath, null, ex.Message));
                     errorCount++;
                 }
-                Console.WriteLine();
             }
 
-            Console.WriteLine("=== Comparison Summary ===");
-            Console.WriteLine($"Package: {packageId}");
-            Console.WriteLine($"Version {currentVersion} vs {previousVersion}");
-            Console.WriteLine($"  Identical: {identicalCount}");
-            Console.WriteLine($"  Different: {differentCount}");
-            Console.WriteLine($"  Errors: {errorCount}");
+            if (outputMode == OutputMode.Json)
+            {
+                var output = new
+                {
+                    packageId,
+                    currentVersion = currentVersionStr,
+                    previousVersion = previousVersionStr,
+                    perDll = dllResults.Select(d => new
+                    {
+                        dllPath = d.DllPath,
+                        areEqual = d.Result?.AreEqual,
+                        differences = d.Result?.Differences,
+                        typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
+                        typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
+                        methodBodyDifferences = d.Result?.MethodBodyDifferences.Select(m => new
+                        {
+                            typeName = m.TypeName,
+                            methodSignature = m.MethodSignature,
+                            instructionDifferences = m.InstructionDifferences,
+                        }),
+                        error = d.Error,
+                    }),
+                    onlyInCurrent,
+                    onlyInPrevious,
+                    summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
+                };
+                Console.WriteLine(JsonSerializer.Serialize(output, Json.Options));
+                return errorCount > 0 ? 1 : 0;
+            }
+
+            DiffRenderer.Render(
+                $"{packageId} {currentVersionStr} ← {previousVersionStr}",
+                dllResults,
+                onlyInPrevious,
+                onlyInCurrent,
+                $"v{previousVersionStr}",
+                $"v{currentVersionStr}");
+
             return errorCount > 0 ? 1 : 0;
         }
         catch (Exception ex)
@@ -178,5 +169,22 @@ internal class CompareCommandHandler
             Console.Error.WriteLine($"Error comparing package: {ex.Message}");
             return 1;
         }
+    }
+
+    private async Task<string> DownloadWithStatus(
+        string packageId, string version, string statusMessage, OutputMode outputMode)
+    {
+        if (outputMode == OutputMode.Json)
+            return await _nugetService.DownloadPackageAsync(packageId, version);
+
+        string path = string.Empty;
+        await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("grey"))
+            .StartAsync(statusMessage, async _ =>
+            {
+                path = await _nugetService.DownloadPackageAsync(packageId, version);
+            });
+        return path;
     }
 }
