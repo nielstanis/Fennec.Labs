@@ -8,7 +8,6 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
-| [FD-019](FD-019_NUPKG_HELPER_CONSOLIDATION.md) | Consolidate nupkg Extraction Helpers | Pending Verification | Low | Low |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Design | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Open | Low | Low |
 
@@ -16,6 +15,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-019](archive/FD-019_NUPKG_HELPER_CONSOLIDATION.md) | Consolidate nupkg Extraction Helpers | 2026-05-17 | `NupkgHelper` static class; `ExtractAsync` + `GetDlls` shared by Reproduce and CompareLocalFiles |
 | [FD-018](archive/FD-018_COMPARE_LOCAL_FILES.md) | Compare Local Files — Accept Two .nupkg or .dll Files Directly | 2026-05-16 | `compare --file a b`; arity-2 option; .dll direct compare + .nupkg extract-and-match; same JSON schema as NuGet path; no cache |
 | [FD-017](archive/FD-017_ASSEMBLYDIFF_TIER2_STRUCTURAL.md) | AssemblyDiff Tier 2 — Structured Diff Records, File Split, PInvokeInfo, Generic Constraints | 2026-05-16 | Typed DiffEvent records replace List<string> Differences; AssemblyComparisonResult + DiffEvent split into separate files; PInvokeInfo, security declarations, nested type recursion added; 28 tests |
 | [FD-016](archive/FD-016_STRUCTURED_OUTPUT_DIRECTORY.md) | Structured Output Directory — Per-Command Subfolders and Result Cache | 2026-05-16 | Global --output/-o root; instrument→.fennec/instrument/; scorecard→.fennec/scorecard/<project>/<ts>/; compare/reproduce write result.json + serve from cache; global --no-cache to bypass |
