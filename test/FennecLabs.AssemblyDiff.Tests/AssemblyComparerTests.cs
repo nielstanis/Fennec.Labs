@@ -45,15 +45,26 @@ public class AssemblyComparerTests
             type.Module.TypeSystem.Void);
         method.Body = new MethodBody(method);
         var il = method.Body.GetILProcessor();
-
         if (bodyBuilder != null)
             bodyBuilder(il);
         else
             il.Append(il.Create(OpCodes.Ret));
-
         type.Methods.Add(method);
         return method;
     }
+
+    private static TypeDefinition AddNestedPublicClass(TypeDefinition parent)
+    {
+        var nested = new TypeDefinition(
+            "",
+            "Inner",
+            TypeAttributes.NestedPublic | TypeAttributes.Class,
+            parent.Module.TypeSystem.Object);
+        parent.NestedTypes.Add(nested);
+        return nested;
+    }
+
+    // ── Type presence ──────────────────────────────────────────────────────────
 
     [Fact]
     public void Compare_TypeAddedInAssembly2_AppearsInTypesOnlyInAssembly2()
@@ -69,7 +80,7 @@ public class AssemblyComparerTests
     }
 
     [Fact]
-    public void Compare_TypeAddedInAssembly2_DifferencesContainsEntry()
+    public void Compare_TypeAddedInAssembly2_EmitsTypePresenceDiffAdded()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
@@ -77,7 +88,8 @@ public class AssemblyComparerTests
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.Contains(result.Differences, d => d.Contains("AddedType") && d.Contains("Assembly2"));
+        Assert.Contains(result.Events.OfType<TypePresenceDiff>(),
+            e => e.TypeName == "TestNamespace.AddedType" && e.Kind == DiffKind.Added);
     }
 
     [Fact]
@@ -94,7 +106,7 @@ public class AssemblyComparerTests
     }
 
     [Fact]
-    public void Compare_TypeRemovedFromAssembly2_DifferencesContainsEntry()
+    public void Compare_TypeRemovedFromAssembly2_EmitsTypePresenceDiffRemoved()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
@@ -102,11 +114,14 @@ public class AssemblyComparerTests
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.Contains(result.Differences, d => d.Contains("RemovedType") && d.Contains("Assembly1"));
+        Assert.Contains(result.Events.OfType<TypePresenceDiff>(),
+            e => e.TypeName == "TestNamespace.RemovedType" && e.Kind == DiffKind.Removed);
     }
 
+    // ── Type flags ─────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Compare_TypeVisibilityChangedPublicToInternal_CapturedInDifferences()
+    public void Compare_TypeVisibilityChangedPublicToInternal_EmitsTypeFlagDiff()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
@@ -115,17 +130,18 @@ public class AssemblyComparerTests
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.Contains(result.Differences,
-            d => d.Contains("MyClass") && d.Contains("Visibility") || d.Contains("IsPublic"));
+        Assert.Contains(result.Events.OfType<TypeFlagDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass" && e.Flag == "IsPublic");
         Assert.False(result.AreEqual);
     }
 
+    // ── Method body ────────────────────────────────────────────────────────────
+
     [Fact]
-    public void Compare_MethodBodyDiffers_StringOperand_CapturedInDifferences()
+    public void Compare_MethodBodyDiffers_StringOperand_EmitsMethodBodyInstructionsDiff()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         var type1 = AddPublicClass(a1, "MyClass");
         AddVoidMethod(type1, "Greet", il =>
         {
@@ -133,7 +149,6 @@ public class AssemblyComparerTests
             il.Append(il.Create(OpCodes.Pop));
             il.Append(il.Create(OpCodes.Ret));
         });
-
         var type2 = AddPublicClass(a2, "MyClass");
         AddVoidMethod(type2, "Greet", il =>
         {
@@ -144,16 +159,15 @@ public class AssemblyComparerTests
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.NotEmpty(result.MethodBodyDifferences);
+        Assert.NotEmpty(result.MethodBodyChanges);
         Assert.False(result.AreEqual);
     }
 
     [Fact]
-    public void Compare_MethodBodyDiffers_IntOperand_CapturedInDifferences()
+    public void Compare_MethodBodyDiffers_IntOperand_EmitsMethodBodyInstructionsDiff()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         var type1 = AddPublicClass(a1, "MyClass");
         AddVoidMethod(type1, "Compute", il =>
         {
@@ -161,7 +175,6 @@ public class AssemblyComparerTests
             il.Append(il.Create(OpCodes.Pop));
             il.Append(il.Create(OpCodes.Ret));
         });
-
         var type2 = AddPublicClass(a2, "MyClass");
         AddVoidMethod(type2, "Compute", il =>
         {
@@ -172,8 +185,37 @@ public class AssemblyComparerTests
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.NotEmpty(result.MethodBodyDifferences);
+        Assert.NotEmpty(result.MethodBodyChanges);
         Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_MethodBodyInstructionsDiff_InstructionDiffsAreTyped()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        AddVoidMethod(type1, "Greet", il =>
+        {
+            il.Append(il.Create(OpCodes.Ldstr, "Hello"));
+            il.Append(il.Create(OpCodes.Pop));
+            il.Append(il.Create(OpCodes.Ret));
+        });
+        var type2 = AddPublicClass(a2, "MyClass");
+        AddVoidMethod(type2, "Greet", il =>
+        {
+            il.Append(il.Create(OpCodes.Ldstr, "World"));
+            il.Append(il.Create(OpCodes.Pop));
+            il.Append(il.Create(OpCodes.Ret));
+        });
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        var bodyDiff = Assert.Single(result.Events.OfType<MethodBodyInstructionsDiff>());
+        Assert.Single(bodyDiff.Changes);
+        Assert.Equal(0, bodyDiff.Changes[0].Index);
+        Assert.Contains("Hello", bodyDiff.Changes[0].Instruction1);
+        Assert.Contains("World", bodyDiff.Changes[0].Instruction2);
     }
 
     [Fact]
@@ -181,14 +223,12 @@ public class AssemblyComparerTests
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         var type1 = AddPublicClass(a1, "MyClass");
         AddVoidMethod(type1, "Run", il =>
         {
             il.Append(il.Create(OpCodes.Nop));
             il.Append(il.Create(OpCodes.Ret));
         });
-
         var type2 = AddPublicClass(a2, "MyClass");
         AddVoidMethod(type2, "Run", il =>
         {
@@ -200,38 +240,33 @@ public class AssemblyComparerTests
         Assert.Null(ex);
     }
 
+    // ── Report truncation ──────────────────────────────────────────────────────
+
     [Fact]
     public void GenerateReport_MoreThan10TypesOnlyInAssembly1_TruncatesToTen()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         for (int i = 0; i < 15; i++)
             AddPublicClass(a1, $"TypeOnly_{i:D2}");
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.Equal(15, result.TypesOnlyInAssembly1.Count);
-
+        Assert.Equal(15, result.TypesOnlyInAssembly1.Count());
         var report = result.GenerateReport();
         Assert.Contains("... and 5 more", report);
     }
+
+    // ── Nested types ───────────────────────────────────────────────────────────
 
     [Fact]
     public void Compare_NestedTypeAddedInAssembly2_IsDetected()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         AddPublicClass(a1, "Outer");
-
         var outer2 = AddPublicClass(a2, "Outer");
-        var nested = new TypeDefinition(
-            "",
-            "Inner",
-            TypeAttributes.NestedPublic | TypeAttributes.Class,
-            a2.MainModule.TypeSystem.Object);
-        outer2.NestedTypes.Add(nested);
+        AddNestedPublicClass(outer2);
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
@@ -244,15 +279,8 @@ public class AssemblyComparerTests
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         var outer1 = AddPublicClass(a1, "Outer");
-        var nested1 = new TypeDefinition(
-            "",
-            "Inner",
-            TypeAttributes.NestedPublic | TypeAttributes.Class,
-            a1.MainModule.TypeSystem.Object);
-        outer1.NestedTypes.Add(nested1);
-
+        AddNestedPublicClass(outer1);
         AddPublicClass(a2, "Outer");
 
         var result = new AssemblyComparer(a1, a2).Compare();
@@ -260,6 +288,72 @@ public class AssemblyComparerTests
         Assert.Contains("TestNamespace.Outer/Inner", result.TypesOnlyInAssembly1);
         Assert.False(result.AreEqual);
     }
+
+    [Fact]
+    public void Compare_NestedTypeOnlyInAssembly2_EmitsTypePresenceDiffWithDeclaringType()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        AddPublicClass(a1, "Outer");
+        var outer2 = AddPublicClass(a2, "Outer");
+        AddNestedPublicClass(outer2);
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        var evt = Assert.Single(result.Events.OfType<TypePresenceDiff>(),
+            e => e.TypeName == "TestNamespace.Outer/Inner");
+        Assert.Equal(DiffKind.Added, evt.Kind);
+        Assert.Equal("TestNamespace.Outer", evt.DeclaringType);
+    }
+
+    [Fact]
+    public void Compare_NestedTypeOnlyInAssembly1_EmitsTypePresenceDiffWithDeclaringType()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var outer1 = AddPublicClass(a1, "Outer");
+        AddNestedPublicClass(outer1);
+        AddPublicClass(a2, "Outer");
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        var evt = Assert.Single(result.Events.OfType<TypePresenceDiff>(),
+            e => e.TypeName == "TestNamespace.Outer/Inner");
+        Assert.Equal(DiffKind.Removed, evt.Kind);
+        Assert.Equal("TestNamespace.Outer", evt.DeclaringType);
+    }
+
+    [Fact]
+    public void Compare_NestedTypeModified_RecursesIntoNestedType()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var outer1 = AddPublicClass(a1, "Outer");
+        var inner1 = AddNestedPublicClass(outer1);
+        AddVoidMethod(inner1, "Work", il =>
+        {
+            il.Append(il.Create(OpCodes.Ldc_I4, 1));
+            il.Append(il.Create(OpCodes.Pop));
+            il.Append(il.Create(OpCodes.Ret));
+        });
+
+        var outer2 = AddPublicClass(a2, "Outer");
+        var inner2 = AddNestedPublicClass(outer2);
+        AddVoidMethod(inner2, "Work", il =>
+        {
+            il.Append(il.Create(OpCodes.Ldc_I4, 2));
+            il.Append(il.Create(OpCodes.Pop));
+            il.Append(il.Create(OpCodes.Ret));
+        });
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Events.OfType<MethodBodyInstructionsDiff>(),
+            e => e.TypeName.EndsWith("/Inner") && e.Signature.Contains("Work"));
+        Assert.False(result.AreEqual);
+    }
+
+    // ── Identity ───────────────────────────────────────────────────────────────
 
     [Fact]
     public void Compare_IdenticalEmptyAssemblies_AreEqual()
@@ -270,7 +364,7 @@ public class AssemblyComparerTests
         var result = new AssemblyComparer(a1, a2).Compare();
 
         Assert.True(result.AreEqual);
-        Assert.Empty(result.Differences);
+        Assert.Empty(result.Events);
     }
 
     [Fact]
@@ -285,6 +379,8 @@ public class AssemblyComparerTests
 
         Assert.True(result.AreEqual);
     }
+
+    // ── Assembly attributes ────────────────────────────────────────────────────
 
     private static void AddAssemblyStringAttribute(AssemblyDefinition assembly, string value)
     {
@@ -307,7 +403,7 @@ public class AssemblyComparerTests
     }
 
     [Fact]
-    public void Compare_AssemblyAttributeConstructorArgsDiffer_CapturedInDifferences()
+    public void Compare_AssemblyAttributeConstructorArgsDiffer_EmitsAssemblyAttributeArgsDiff()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
@@ -316,17 +412,18 @@ public class AssemblyComparerTests
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.Contains(result.Differences,
-            d => d.Contains("TestStringAttr") && d.Contains("argument values differ"));
+        Assert.Contains(result.Events.OfType<AssemblyAttributeArgsDiff>(),
+            e => e.AttributeType.Contains("TestStringAttr"));
         Assert.False(result.AreEqual);
     }
 
+    // ── Method flags ───────────────────────────────────────────────────────────
+
     [Fact]
-    public void Compare_MethodImplAttributesDiffer_CapturedInDifferences()
+    public void Compare_MethodImplAttributesDiffer_EmitsMethodImplAttrsDiff()
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         var type1 = AddPublicClass(a1, "MyClass");
         var m1 = AddVoidMethod(type1, "Compute");
         m1.ImplAttributes = MethodImplAttributes.AggressiveInlining;
@@ -337,7 +434,8 @@ public class AssemblyComparerTests
 
         var result = new AssemblyComparer(a1, a2).Compare();
 
-        Assert.Contains(result.Differences, d => d.Contains("ImplAttributes"));
+        Assert.Contains(result.Events.OfType<MethodImplAttrsDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass");
         Assert.False(result.AreEqual);
     }
 
@@ -346,7 +444,6 @@ public class AssemblyComparerTests
     {
         using var a1 = CreateAssembly();
         using var a2 = CreateAssembly();
-
         var type1 = AddPublicClass(a1, "MyClass");
         var method1 = new MethodDefinition("Process", MethodAttributes.Public, a1.MainModule.TypeSystem.Void);
         method1.Body = new MethodBody(method1);
@@ -364,6 +461,178 @@ public class AssemblyComparerTests
         var result = new AssemblyComparer(a1, a2).Compare();
 
         Assert.False(result.AreEqual);
-        Assert.Contains(result.Differences, d => d.Contains("Process"));
+        Assert.Contains(result.Events.OfType<MethodPresenceDiff>(),
+            e => e.Signature.Contains("Process"));
+    }
+
+    // ── P/Invoke ───────────────────────────────────────────────────────────────
+
+    private static void AddPInvokeMethod(
+        TypeDefinition type, string methodName, string dllName, string entryPoint)
+    {
+        var method = new MethodDefinition(
+            methodName,
+            MethodAttributes.Public | MethodAttributes.Static | MethodAttributes.PInvokeImpl,
+            type.Module.TypeSystem.Void);
+        var moduleRef = new ModuleReference(dllName);
+        type.Module.ModuleReferences.Add(moduleRef);
+        method.PInvokeInfo = new PInvokeInfo(PInvokeAttributes.CallConvWinapi, entryPoint, moduleRef);
+        type.Methods.Add(method);
+    }
+
+    [Fact]
+    public void Compare_PInvokeInfoDiffers_EmitsMethodPInvokeInfoDiff()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        var type2 = AddPublicClass(a2, "MyClass");
+        AddPInvokeMethod(type1, "NativeMethod", "kernel32.dll", "FunctionA");
+        AddPInvokeMethod(type2, "NativeMethod", "kernel32.dll", "FunctionB");
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Events.OfType<MethodPInvokeInfoDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass" && e.Signature.Contains("NativeMethod"));
+        Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_PInvokeInfoUnchanged_NoMethodPInvokeInfoDiffEvent()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        var type2 = AddPublicClass(a2, "MyClass");
+        AddPInvokeMethod(type1, "NativeMethod", "kernel32.dll", "FunctionA");
+        AddPInvokeMethod(type2, "NativeMethod", "kernel32.dll", "FunctionA");
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.DoesNotContain(result.Events, e => e is MethodPInvokeInfoDiff);
+    }
+
+    // ── Generic constraints ────────────────────────────────────────────────────
+
+    private static void AddGenericMethodWithConstraint(
+        TypeDefinition type, string methodName, TypeReference? constraintType)
+    {
+        var method = new MethodDefinition(methodName, MethodAttributes.Public, type.Module.TypeSystem.Void);
+        method.Body = new MethodBody(method);
+        method.Body.GetILProcessor().Append(method.Body.GetILProcessor().Create(OpCodes.Ret));
+        var genericParam = new GenericParameter("T", method);
+        if (constraintType != null)
+            genericParam.Constraints.Add(new GenericParameterConstraint(constraintType));
+        method.GenericParameters.Add(genericParam);
+        type.Methods.Add(method);
+    }
+
+    [Fact]
+    public void Compare_GenericConstraintsDiffer_TreatedAsDistinctMethods()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        var type2 = AddPublicClass(a2, "MyClass");
+        AddGenericMethodWithConstraint(type1, "GenericMethod", a1.MainModule.TypeSystem.Object);
+        AddGenericMethodWithConstraint(type2, "GenericMethod", constraintType: null);
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Events.OfType<MethodPresenceDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass" && e.Signature.Contains("GenericMethod"));
+        Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_GenericConstraintsUnchanged_NoSpuriousPresenceDiff()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        var type2 = AddPublicClass(a2, "MyClass");
+        AddGenericMethodWithConstraint(type1, "GenericMethod", a1.MainModule.TypeSystem.Object);
+        AddGenericMethodWithConstraint(type2, "GenericMethod", a2.MainModule.TypeSystem.Object);
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.DoesNotContain(result.Events.OfType<MethodPresenceDiff>(),
+            e => e.Signature.Contains("GenericMethod"));
+    }
+
+    // ── Security declarations ──────────────────────────────────────────────────
+
+    [Fact]
+    public void Compare_TypeSecurityDeclarationAdded_EmitsTypeSecurityDeclarationDiff()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        AddPublicClass(a1, "MyClass");
+        var type2 = AddPublicClass(a2, "MyClass");
+        type2.SecurityDeclarations.Add(new SecurityDeclaration(SecurityAction.Demand));
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Events.OfType<TypeSecurityDeclarationDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass" && e.Kind == DiffKind.Added);
+        Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_TypeSecurityDeclarationRemoved_EmitsTypeSecurityDeclarationDiff()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        type1.SecurityDeclarations.Add(new SecurityDeclaration(SecurityAction.Demand));
+        AddPublicClass(a2, "MyClass");
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Events.OfType<TypeSecurityDeclarationDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass" && e.Kind == DiffKind.Removed);
+        Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_MethodSecurityDeclarationAdded_EmitsMethodSecurityDeclarationDiff()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        AddVoidMethod(type1, "Secure");
+
+        var type2 = AddPublicClass(a2, "MyClass");
+        var m2 = AddVoidMethod(type2, "Secure");
+        m2.SecurityDeclarations.Add(new SecurityDeclaration(SecurityAction.Demand));
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Events.OfType<MethodSecurityDeclarationDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass"
+              && e.Signature.Contains("Secure")
+              && e.Kind == DiffKind.Added);
+        Assert.False(result.AreEqual);
+    }
+
+    [Fact]
+    public void Compare_MethodSecurityDeclarationRemoved_EmitsMethodSecurityDeclarationDiff()
+    {
+        using var a1 = CreateAssembly();
+        using var a2 = CreateAssembly();
+        var type1 = AddPublicClass(a1, "MyClass");
+        var m1 = AddVoidMethod(type1, "Secure");
+        m1.SecurityDeclarations.Add(new SecurityDeclaration(SecurityAction.Demand));
+
+        var type2 = AddPublicClass(a2, "MyClass");
+        AddVoidMethod(type2, "Secure");
+
+        var result = new AssemblyComparer(a1, a2).Compare();
+
+        Assert.Contains(result.Events.OfType<MethodSecurityDeclarationDiff>(),
+            e => e.TypeName == "TestNamespace.MyClass"
+              && e.Signature.Contains("Secure")
+              && e.Kind == DiffKind.Removed);
+        Assert.False(result.AreEqual);
     }
 }

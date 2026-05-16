@@ -138,14 +138,23 @@ internal class ReproduceCommandHandler
                 {
                     dllPath = d.DllPath,
                     areEqual = d.Result?.AreEqual,
-                    differences = d.Result?.Differences,
+                    events = d.Result?.Events.Select(e => new
+                    {
+                        type = e.GetType().Name,
+                        message = e.FormatMessage(),
+                    }),
                     typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
                     typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
-                    methodBodyDifferences = d.Result?.MethodBodyDifferences.Select(m => new
+                    methodBodyChanges = d.Result?.MethodBodyChanges.Select(m => new
                     {
                         typeName = m.TypeName,
-                        methodSignature = m.MethodSignature,
-                        instructionDifferences = m.InstructionDifferences,
+                        signature = m.Signature,
+                        instructionDiffs = m.Changes.Select(c => new
+                        {
+                            c.Index, c.Instruction1, c.Instruction2,
+                        }),
+                        instructions1 = m.Instructions1,
+                        instructions2 = m.Instructions2,
                     }),
                     error = d.Error,
                 }),

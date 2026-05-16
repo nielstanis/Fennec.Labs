@@ -38,16 +38,16 @@ internal static class DiffRenderer
                 var r = dll.Result;
                 AnsiConsole.MarkupLine(
                     $"  [red]✗[/] {Markup.Escape(dll.DllPath)}  " +
-                    $"[red dim]{r.Differences.Count} difference(s)[/]");
+                    $"[red dim]{r.Events.Count} difference(s)[/]");
 
                 foreach (var t in r.TypesOnlyInAssembly1.Take(5))
                     AnsiConsole.MarkupLine($"      [red]−[/] [dim]removed:[/]  {Markup.Escape(t)}");
                 foreach (var t in r.TypesOnlyInAssembly2.Take(5))
                     AnsiConsole.MarkupLine($"      [green]+[/] [dim]added:[/]    {Markup.Escape(t)}");
-                foreach (var m in r.MethodBodyDifferences.Take(3))
+                foreach (var m in r.MethodBodyChanges.Take(3))
                     AnsiConsole.MarkupLine(
                         $"      [yellow]~[/] [dim]changed:[/]  " +
-                        $"{Markup.Escape(m.TypeName)}.{Markup.Escape(m.MethodSignature)}");
+                        $"{Markup.Escape(m.TypeName)}.{Markup.Escape(m.Signature)}");
             }
         }
 
