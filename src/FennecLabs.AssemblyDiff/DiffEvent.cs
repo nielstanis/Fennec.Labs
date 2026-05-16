@@ -2,7 +2,7 @@ using Mono.Cecil;
 
 namespace FennecLabs.AssemblyDiff;
 
-public enum DiffKind { Added, Removed, Changed }
+public enum DiffKind { Added, Removed }
 
 public abstract record DiffEvent
 {
@@ -156,12 +156,6 @@ public record MethodPInvokeInfoDiff(string TypeName, string Signature, string? W
 {
     public override string FormatMessage() =>
         $"Type '{TypeName}', Method '{Signature}': PInvokeInfo differs ('{Was}' vs '{Is}')";
-}
-
-public record MethodGenericConstraintsDiff(string TypeName, string Signature, string Was, string Is) : DiffEvent
-{
-    public override string FormatMessage() =>
-        $"Type '{TypeName}', Method '{Signature}': Generic constraints differ ('{Was}' vs '{Is}')";
 }
 
 public record MethodSecurityDeclarationDiff(
