@@ -1,6 +1,7 @@
 # FD-018: Compare Local Files — Accept Two .nupkg or .dll Files Directly
 
-**Status:** Pending Verification
+**Status:** Complete
+**Completed:** 2026-05-16
 **Priority:** Medium
 **Effort:** Medium (2–4 hours)
 **Impact:** Lets users diff any two assemblies or packages without publishing to NuGet first —
