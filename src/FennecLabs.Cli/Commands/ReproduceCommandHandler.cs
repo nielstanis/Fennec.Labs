@@ -18,7 +18,8 @@ internal class ReproduceCommandHandler
     }
 
     public async Task<int> ExecuteAsync(
-        string nupkgFilePath, string packageId, string? version, OutputMode outputMode)
+        string nupkgFilePath, string packageId, string? version, OutputMode outputMode,
+        string output, bool noCache)
     {
         if (!File.Exists(nupkgFilePath))
         {
@@ -30,6 +31,20 @@ internal class ReproduceCommandHandler
         {
             Console.Error.WriteLine($"File must be a .nupkg file: {nupkgFilePath}");
             return 1;
+        }
+
+        if (!noCache && version != null)
+        {
+            var cachePath = OutputCache.ReproducePath(output, packageId, version);
+            if (OutputCache.Exists(cachePath))
+            {
+                var cached = OutputCache.TryLoad(cachePath)!;
+                if (outputMode == OutputMode.Json)
+                    Console.WriteLine(cached);
+                else
+                    RenderCachedResult(cached, cachePath);
+                return 0;
+            }
         }
 
         string? tempExtractPath = null;
@@ -114,33 +129,38 @@ internal class ReproduceCommandHandler
                 }
             }
 
+            var reproduceResult = new
+            {
+                packageId,
+                localFile = nupkgFilePath,
+                feedVersion = version ?? "latest",
+                perDll = dllResults.Select(d => new
+                {
+                    dllPath = d.DllPath,
+                    areEqual = d.Result?.AreEqual,
+                    differences = d.Result?.Differences,
+                    typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
+                    typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
+                    methodBodyDifferences = d.Result?.MethodBodyDifferences.Select(m => new
+                    {
+                        typeName = m.TypeName,
+                        methodSignature = m.MethodSignature,
+                        instructionDifferences = m.InstructionDifferences,
+                    }),
+                    error = d.Error,
+                }),
+                onlyInLocal,
+                onlyInFeed,
+                summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
+            };
+            var json = JsonSerializer.Serialize(reproduceResult, Json.Options);
+
+            if (version != null)
+                await OutputCache.WriteAsync(OutputCache.ReproducePath(output, packageId, version), json);
+
             if (outputMode == OutputMode.Json)
             {
-                var output = new
-                {
-                    packageId,
-                    localFile = nupkgFilePath,
-                    feedVersion = version ?? "latest",
-                    perDll = dllResults.Select(d => new
-                    {
-                        dllPath = d.DllPath,
-                        areEqual = d.Result?.AreEqual,
-                        differences = d.Result?.Differences,
-                        typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
-                        typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
-                        methodBodyDifferences = d.Result?.MethodBodyDifferences.Select(m => new
-                        {
-                            typeName = m.TypeName,
-                            methodSignature = m.MethodSignature,
-                            instructionDifferences = m.InstructionDifferences,
-                        }),
-                        error = d.Error,
-                    }),
-                    onlyInLocal,
-                    onlyInFeed,
-                    summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
-                };
-                Console.WriteLine(JsonSerializer.Serialize(output, Json.Options));
+                Console.WriteLine(json);
                 return errorCount > 0 ? 1 : 0;
             }
 
@@ -167,6 +187,26 @@ internal class ReproduceCommandHandler
                 catch { /* ignore cleanup errors */ }
             }
         }
+    }
+
+    private static void RenderCachedResult(string json, string cachePath)
+    {
+        AnsiConsole.MarkupLine($"[dim](cached)[/] {Markup.Escape(cachePath)}");
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("summary", out var summary))
+            {
+                var identical = summary.GetProperty("identical").GetInt32();
+                var different = summary.GetProperty("different").GetInt32();
+                var errors = summary.GetProperty("errors").GetInt32();
+                AnsiConsole.MarkupLine(
+                    $"[dim]Summary: [green]{identical} identical[/] · " +
+                    $"[red]{different} different[/] · [red]{errors} error(s)[/][/]");
+            }
+        }
+        catch (System.Text.Json.JsonException) { }
+        AnsiConsole.MarkupLine("[dim]Use --no-cache to force a fresh run.[/]");
     }
 
     private static async Task ExtractNupkgFileAsync(string nupkgFilePath, string extractPath)

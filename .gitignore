@@ -9,6 +9,9 @@ docs/
 # Runtime-generated scorecard cache (refreshed by live tests, not committed)
 test/TestProjects/**/.fennec/
 
+# IDE language-server cache files
+*.lscache
+
 # macOS resource fork files
 ._*
 

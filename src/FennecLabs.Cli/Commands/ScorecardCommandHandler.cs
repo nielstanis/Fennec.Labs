@@ -15,7 +15,8 @@ internal class ScorecardCommandHandler
         _scorecardClient = scorecardClient;
     }
 
-    public async Task<int> ExecuteAsync(string? projectPath, bool generateReport, OutputMode outputMode)
+    public async Task<int> ExecuteAsync(
+        string? projectPath, bool generateReport, OutputMode outputMode, string output)
     {
         if (outputMode == OutputMode.Human)
         {
@@ -115,25 +116,34 @@ internal class ScorecardCommandHandler
             }
         }
 
+        var scorecardOutput = new
+        {
+            packages = results.Select(r => new
+            {
+                packageId = r.PackageId,
+                packageVersion = r.PackageVersion,
+                score = r.Scorecard?.Score,
+                checks = r.Scorecard?.Checks.Select(c => new
+                {
+                    name = c.Name,
+                    score = c.Score,
+                    reason = c.Reason,
+                }),
+                error = r.Error,
+            }),
+        };
+        var json = JsonSerializer.Serialize(scorecardOutput, Json.Options);
+
+        var projectName = projectPath != null
+            ? Path.GetFileNameWithoutExtension(projectPath)
+            : "project";
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+        var scoreDir = OutputCache.ScorecardDir(output, projectName, timestamp);
+        await OutputCache.WriteAsync(Path.Combine(scoreDir, "result.json"), json);
+
         if (outputMode == OutputMode.Json)
         {
-            var output = new
-            {
-                packages = results.Select(r => new
-                {
-                    packageId = r.PackageId,
-                    packageVersion = r.PackageVersion,
-                    score = r.Scorecard?.Score,
-                    checks = r.Scorecard?.Checks.Select(c => new
-                    {
-                        name = c.Name,
-                        score = c.Score,
-                        reason = c.Reason,
-                    }),
-                    error = r.Error,
-                }),
-            };
-            Console.WriteLine(JsonSerializer.Serialize(output, Json.Options));
+            Console.WriteLine(json);
             return 0;
         }
 
@@ -142,7 +152,7 @@ internal class ScorecardCommandHandler
 
         if (generateReport)
         {
-            var reportPath = await GenerateHtmlReportAsync(packageList, results, projectPath);
+            var reportPath = await GenerateHtmlReportAsync(packageList, results, projectPath, scoreDir);
             AnsiConsole.WriteLine();
             AnsiConsole.MarkupLine($"[dim]HTML report:[/] {Markup.Escape(reportPath)}");
         }
@@ -153,11 +163,10 @@ internal class ScorecardCommandHandler
     private static async Task<string> GenerateHtmlReportAsync(
         PackageListResult? packageList,
         List<PackageScorecardResult> results,
-        string? projectPath)
+        string? projectPath,
+        string scoreDir)
     {
-        var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
-        var reportFileName = $"scorecard-report-{timestamp}.html";
-        var reportPath = Path.Combine(Directory.GetCurrentDirectory(), reportFileName);
+        var reportPath = Path.Combine(scoreDir, "report.html");
         await File.WriteAllTextAsync(reportPath, BuildHtmlReport(packageList, results, projectPath));
         return reportPath;
     }

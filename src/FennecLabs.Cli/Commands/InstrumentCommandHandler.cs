@@ -60,9 +60,10 @@ internal class InstrumentCommandHandler
             return 0;
         }
 
-        var writer = WriterFactory.CreateWriter(ParseFileFormat(fileFormat), output);
+        var instrumentOutput = Path.Combine(output, "instrument");
+        var writer = WriterFactory.CreateWriter(ParseFileFormat(fileFormat), instrumentOutput);
         await writer.WriteOutputAsync(result);
-        AnsiConsole.MarkupLine($"[dim]Output written to[/] {Markup.Escape(output)}/");
+        AnsiConsole.MarkupLine($"[dim]Output written to[/] {Markup.Escape(instrumentOutput)}/");
         return 0;
     }
 
@@ -124,7 +125,7 @@ internal class InstrumentCommandHandler
             AnsiConsole.MarkupLine($"[dim]Found {dllFiles.Count} DLL file(s)[/]");
 
             var resolvedVersion = Path.GetFileName(packagePath);
-            var packageOutput = Path.Combine(output, packageId, resolvedVersion);
+            var packageOutput = Path.Combine(output, "instrument", packageId, resolvedVersion);
             var writer = WriterFactory.CreateWriter(ParseFileFormat(fileFormat), packageOutput);
             int successCount = 0;
             int errorCount = 0;

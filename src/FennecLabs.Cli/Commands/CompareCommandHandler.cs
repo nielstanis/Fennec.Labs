@@ -17,7 +17,8 @@ internal class CompareCommandHandler
         _nugetService = nugetService;
     }
 
-    public async Task<int> ExecuteAsync(string packageId, string? version, OutputMode outputMode)
+    public async Task<int> ExecuteAsync(
+        string packageId, string? version, OutputMode outputMode, string output, bool noCache)
     {
         try
         {
@@ -66,6 +67,17 @@ internal class CompareCommandHandler
 
             var currentVersionStr = currentVersion.ToNormalizedString();
             var previousVersionStr = previousVersion.ToNormalizedString();
+
+            var cachePath = OutputCache.ComparePath(output, packageId, currentVersionStr, previousVersionStr);
+            if (!noCache && OutputCache.Exists(cachePath))
+            {
+                var cached = OutputCache.TryLoad(cachePath)!;
+                if (outputMode == OutputMode.Json)
+                    Console.WriteLine(cached);
+                else
+                    RenderCachedResult(cached, cachePath);
+                return 0;
+            }
 
             string currentPackagePath = await DownloadWithStatus(
                 packageId, currentVersionStr,
@@ -124,33 +136,36 @@ internal class CompareCommandHandler
                 }
             }
 
+            var compareResult = new
+            {
+                packageId,
+                currentVersion = currentVersionStr,
+                previousVersion = previousVersionStr,
+                perDll = dllResults.Select(d => new
+                {
+                    dllPath = d.DllPath,
+                    areEqual = d.Result?.AreEqual,
+                    differences = d.Result?.Differences,
+                    typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
+                    typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
+                    methodBodyDifferences = d.Result?.MethodBodyDifferences.Select(m => new
+                    {
+                        typeName = m.TypeName,
+                        methodSignature = m.MethodSignature,
+                        instructionDifferences = m.InstructionDifferences,
+                    }),
+                    error = d.Error,
+                }),
+                onlyInCurrent,
+                onlyInPrevious,
+                summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
+            };
+            var json = JsonSerializer.Serialize(compareResult, Json.Options);
+            await OutputCache.WriteAsync(cachePath, json);
+
             if (outputMode == OutputMode.Json)
             {
-                var output = new
-                {
-                    packageId,
-                    currentVersion = currentVersionStr,
-                    previousVersion = previousVersionStr,
-                    perDll = dllResults.Select(d => new
-                    {
-                        dllPath = d.DllPath,
-                        areEqual = d.Result?.AreEqual,
-                        differences = d.Result?.Differences,
-                        typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
-                        typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
-                        methodBodyDifferences = d.Result?.MethodBodyDifferences.Select(m => new
-                        {
-                            typeName = m.TypeName,
-                            methodSignature = m.MethodSignature,
-                            instructionDifferences = m.InstructionDifferences,
-                        }),
-                        error = d.Error,
-                    }),
-                    onlyInCurrent,
-                    onlyInPrevious,
-                    summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
-                };
-                Console.WriteLine(JsonSerializer.Serialize(output, Json.Options));
+                Console.WriteLine(json);
                 return errorCount > 0 ? 1 : 0;
             }
 
@@ -169,6 +184,26 @@ internal class CompareCommandHandler
             Console.Error.WriteLine($"Error comparing package: {ex.Message}");
             return 1;
         }
+    }
+
+    private static void RenderCachedResult(string json, string cachePath)
+    {
+        AnsiConsole.MarkupLine($"[dim](cached)[/] {Markup.Escape(cachePath)}");
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("summary", out var summary))
+            {
+                var identical = summary.GetProperty("identical").GetInt32();
+                var different = summary.GetProperty("different").GetInt32();
+                var errors = summary.GetProperty("errors").GetInt32();
+                AnsiConsole.MarkupLine(
+                    $"[dim]Summary: [green]{identical} identical[/] · " +
+                    $"[red]{different} different[/] · [red]{errors} error(s)[/][/]");
+            }
+        }
+        catch (System.Text.Json.JsonException) { }
+        AnsiConsole.MarkupLine("[dim]Use --no-cache to force a fresh run.[/]");
     }
 
     private async Task<string> DownloadWithStatus(

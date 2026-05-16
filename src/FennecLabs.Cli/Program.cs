@@ -20,6 +20,21 @@ class Program
         };
         rootCommand.Options.Add(globalFormatOption);
 
+        var globalOutputOption = new Option<string>("--output", "-o")
+        {
+            Description = "Root folder for all file output (default: .fennec)",
+            DefaultValueFactory = _ => ".fennec",
+            Recursive = true,
+        };
+        rootCommand.Options.Add(globalOutputOption);
+
+        var globalNoCacheOption = new Option<bool>("--no-cache")
+        {
+            Description = "Bypass cached results and force a fresh run",
+            Recursive = true,
+        };
+        rootCommand.Options.Add(globalNoCacheOption);
+
         // instrument command
         var filenameOption = new Option<string>("--filename", "-f")
         {
@@ -33,11 +48,6 @@ class Program
         {
             Description = "Version of the NuGet package (optional, uses latest if not specified)"
         };
-        var outputOption = new Option<string>("--output", "-o")
-        {
-            Description = "Output folder for instrumentation results (default: .fennec)",
-            DefaultValueFactory = _ => ".fennec"
-        };
         var fileFormatOption = new Option<string>("--file-format", "-F")
         {
             Description = "File output format: fxt or json (default: fxt)",
@@ -48,7 +58,6 @@ class Program
         instrumentCommand.Options.Add(filenameOption);
         instrumentCommand.Options.Add(nugetOption);
         instrumentCommand.Options.Add(versionOption);
-        instrumentCommand.Options.Add(outputOption);
         instrumentCommand.Options.Add(fileFormatOption);
         instrumentCommand.SetAction(async (ParseResult parseResult) =>
         {
@@ -57,7 +66,7 @@ class Program
                 parseResult.GetValue(filenameOption),
                 parseResult.GetValue(nugetOption),
                 parseResult.GetValue(versionOption),
-                parseResult.GetValue(outputOption) ?? ".fennec",
+                parseResult.GetValue(globalOutputOption) ?? ".fennec",
                 parseResult.GetValue(fileFormatOption) ?? "fxt",
                 ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
         });
@@ -81,7 +90,8 @@ class Program
             return await handler.ExecuteAsync(
                 parseResult.GetValue(projectPathOption),
                 parseResult.GetValue(reportOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)),
+                parseResult.GetValue(globalOutputOption) ?? ".fennec");
         });
 
         // compare command
@@ -111,7 +121,9 @@ class Program
             return await handler.ExecuteAsync(
                 nuget,
                 parseResult.GetValue(compareVersionOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)),
+                parseResult.GetValue(globalOutputOption) ?? ".fennec",
+                parseResult.GetValue(globalNoCacheOption));
         });
 
         // reproduce command
@@ -153,7 +165,9 @@ class Program
                 filename,
                 nuget,
                 parseResult.GetValue(reproduceVersionOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                ResolveOutputMode(parseResult.GetValue(globalFormatOption)),
+                parseResult.GetValue(globalOutputOption) ?? ".fennec",
+                parseResult.GetValue(globalNoCacheOption));
         });
 
         // feeds command
