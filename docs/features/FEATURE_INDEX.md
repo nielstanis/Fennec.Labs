@@ -8,7 +8,6 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
-| [FD-016](FD-016_STRUCTURED_OUTPUT_DIRECTORY.md) | Structured Output Directory — Per-Command Subfolders and Result Cache | Open | Medium | Medium |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Design | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Open | Low | Low |
 
@@ -16,6 +15,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-016](archive/FD-016_STRUCTURED_OUTPUT_DIRECTORY.md) | Structured Output Directory — Per-Command Subfolders and Result Cache | 2026-05-16 | Global --output/-o root; instrument→.fennec/instrument/; scorecard→.fennec/scorecard/<project>/<ts>/; compare/reproduce write result.json + serve from cache; global --no-cache to bypass |
 | [FD-015](archive/FD-015_GLOBAL_JSON_OUTPUT.md) | Global JSON Output — All Commands | 2026-05-14 | Global --format human\|json recursive option; OutputMode enum; --file-format rename on instrument; all 5 handlers emit structured JSON; progress suppressed in JSON mode |
 | [FD-014](archive/FD-014_SEMANTIC_SPECTRE_UI.md) | Semantic Spectre.Console UI — Scorecard & Compare | 2026-05-14 | ColorTheme + ScorecardRenderer + DiffRenderer; score thresholds (green/yellow/red); diff lines (+/−/~); download spinners via AnsiConsole.Status |
 | [FD-006](archive/FD-006_SPECTRE_CONSOLE_FOUNDATION.md) | Add Spectre.Console as CLI Rendering Foundation | 2026-05-14 | Spectre.Console 0.55.2 added to FennecLabs.Cli; foundation for FD-014 rendering layer |

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add structured output directory: all commands write results under `.fennec/<command>/` subfolders; `compare` and `reproduce` cache results to disk and serve on repeat runs; global `--no-cache` forces a fresh run; scorecard HTML report co-located with `result.json` under a timestamped dir (FD-016)
 - Add global `--format human|json` option (recursive across all subcommands); all five commands emit structured JSON to stdout when `--format json` is passed, with progress suppressed (FD-015)
 - Add `Rendering/ScorecardRenderer` rendering a Spectre.Console table with score thresholds (green ≥7, yellow 4–6.9, red <4) and failing checks inline (FD-014)
 - Add `Rendering/DiffRenderer` rendering per-DLL diff results with `+`/`−`/`~` color semantics for added/removed/changed types and methods (FD-014)
