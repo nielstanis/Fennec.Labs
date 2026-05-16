@@ -1,8 +1,6 @@
-using System.IO.Compression;
 using System.Text.Json;
 using FennecLabs.AssemblyDiff;
 using FennecLabs.Cli.Rendering;
-using FennecLabs.NuGet;
 using Mono.Cecil;
 using Spectre.Console;
 
@@ -80,19 +78,19 @@ internal class CompareLocalFilesCommandHandler
             {
                 await AnsiConsole.Status().Spinner(Spinner.Known.Dots).SpinnerStyle(Style.Parse("grey"))
                     .StartAsync($"Extracting {Path.GetFileName(file1)}…",
-                        async _ => await ExtractNupkgAsync(file1, temp1));
+                        async _ => await NupkgHelper.ExtractAsync(file1, temp1));
                 await AnsiConsole.Status().Spinner(Spinner.Known.Dots).SpinnerStyle(Style.Parse("grey"))
                     .StartAsync($"Extracting {Path.GetFileName(file2)}…",
-                        async _ => await ExtractNupkgAsync(file2, temp2));
+                        async _ => await NupkgHelper.ExtractAsync(file2, temp2));
             }
             else
             {
-                await ExtractNupkgAsync(file1, temp1);
-                await ExtractNupkgAsync(file2, temp2);
+                await NupkgHelper.ExtractAsync(file1, temp1);
+                await NupkgHelper.ExtractAsync(file2, temp2);
             }
 
-            var dlls1 = GetDllsFromDirectory(temp1);
-            var dlls2 = GetDllsFromDirectory(temp2);
+            var dlls1 = NupkgHelper.GetDlls(temp1);
+            var dlls2 = NupkgHelper.GetDlls(temp2);
 
             var matchingDlls = dlls1.Keys.Intersect(dlls2.Keys).ToList();
             var onlyIn1 = dlls1.Keys.Except(dlls2.Keys).ToList();
@@ -196,35 +194,6 @@ internal class CompareLocalFilesCommandHandler
 
         return errorCount > 0 ? 1 : 0;
     }
-
-    private static async Task ExtractNupkgAsync(string nupkgPath, string extractPath)
-    {
-        using var fileStream = File.OpenRead(nupkgPath);
-        using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
-
-        foreach (var entry in archive.Entries)
-        {
-            if (string.IsNullOrEmpty(entry.Name))
-                continue;
-
-            var entryPath = Path.Combine(extractPath, entry.FullName);
-            var entryDir = Path.GetDirectoryName(entryPath);
-            if (!string.IsNullOrEmpty(entryDir))
-                Directory.CreateDirectory(entryDir);
-
-            using var entryStream = entry.Open();
-            using var outStream = File.Create(entryPath);
-            await entryStream.CopyToAsync(outStream);
-        }
-    }
-
-    private static Dictionary<string, PackageFileInfo> GetDllsFromDirectory(string dir) =>
-        Directory.GetFiles(dir, "*.dll", SearchOption.AllDirectories)
-            .Select(f => new { Relative = Path.GetRelativePath(dir, f), Full = f })
-            .Where(f => !f.Relative.Contains("_._"))
-            .ToDictionary(
-                f => f.Relative,
-                f => new PackageFileInfo { Path = f.Relative, FullPath = f.Full, Size = new FileInfo(f.Full).Length });
 
     private static void CleanupTemp(string? path)
     {

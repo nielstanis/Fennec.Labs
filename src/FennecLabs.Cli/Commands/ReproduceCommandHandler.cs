@@ -1,4 +1,3 @@
-using System.IO.Compression;
 using System.Text.Json;
 using FennecLabs.AssemblyDiff;
 using FennecLabs.Cli.Rendering;
@@ -61,18 +60,15 @@ internal class ReproduceCommandHandler
                     .SpinnerStyle(Style.Parse("grey"))
                     .StartAsync($"Extracting {Path.GetFileName(nupkgFilePath)}…", async _ =>
                     {
-                        await ExtractNupkgFileAsync(nupkgFilePath, tempExtractPath);
+                        await NupkgHelper.ExtractAsync(nupkgFilePath, tempExtractPath);
                     });
             }
             else
             {
-                await ExtractNupkgFileAsync(nupkgFilePath, tempExtractPath);
+                await NupkgHelper.ExtractAsync(nupkgFilePath, tempExtractPath);
             }
 
-            var localDlls = GetPackageContentsFromDirectory(tempExtractPath)
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                    && !f.Path.Contains("_._"))
-                .ToDictionary(f => f.Path, f => f);
+            var localDlls = NupkgHelper.GetDlls(tempExtractPath);
 
             string feedPackagePath = string.Empty;
             if (outputMode == OutputMode.Human)
@@ -218,39 +214,4 @@ internal class ReproduceCommandHandler
         AnsiConsole.MarkupLine("[dim]Use --no-cache to force a fresh run.[/]");
     }
 
-    private static async Task ExtractNupkgFileAsync(string nupkgFilePath, string extractPath)
-    {
-        using var fileStream = File.OpenRead(nupkgFilePath);
-        using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
-
-        foreach (var entry in archive.Entries)
-        {
-            if (string.IsNullOrEmpty(entry.Name))
-                continue;
-
-            var entryPath = Path.Combine(extractPath, entry.FullName);
-            var entryDirectory = Path.GetDirectoryName(entryPath);
-
-            if (!string.IsNullOrEmpty(entryDirectory))
-                Directory.CreateDirectory(entryDirectory);
-
-            using var entryStream = entry.Open();
-            using var fileOutStream = File.Create(entryPath);
-            await entryStream.CopyToAsync(fileOutStream);
-        }
-    }
-
-    private static List<PackageFileInfo> GetPackageContentsFromDirectory(string packagePath)
-    {
-        return Directory.GetFiles(packagePath, "*", SearchOption.AllDirectories)
-            .Select(f => new FileInfo(f))
-            .OrderBy(f => f.FullName)
-            .Select(f => new PackageFileInfo
-            {
-                Path = Path.GetRelativePath(packagePath, f.FullName),
-                FullPath = f.FullName,
-                Size = f.Length,
-            })
-            .ToList();
-    }
 }
