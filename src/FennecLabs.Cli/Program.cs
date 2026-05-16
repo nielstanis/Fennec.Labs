@@ -103,17 +103,41 @@ class Program
         {
             Description = "Version to compare (optional, uses latest if not specified)"
         };
+        var compareFileOption = new Option<string[]>("--file")
+        {
+            Description = "Two .dll or .nupkg files to compare",
+            Arity = new ArgumentArity(2, 2),
+            AllowMultipleArgumentsPerToken = true,
+        };
 
-        var compareCommand = new Command("compare", "Compare assemblies between two versions of a NuGet package");
+        var compareCommand = new Command("compare",
+            "Compare assemblies between two NuGet versions or two local .dll/.nupkg files");
         compareCommand.Options.Add(compareNugetOption);
         compareCommand.Options.Add(compareVersionOption);
+        compareCommand.Options.Add(compareFileOption);
         compareCommand.SetAction(async (ParseResult parseResult) =>
         {
             var nuget = parseResult.GetValue(compareNugetOption);
+            var files = parseResult.GetValue(compareFileOption);
+
+            if (files is { Length: 2 })
+            {
+                if (!string.IsNullOrWhiteSpace(nuget))
+                {
+                    Console.Error.WriteLine("--file and --nuget are mutually exclusive.");
+                    return 1;
+                }
+
+                var localHandler = new CompareLocalFilesCommandHandler();
+                return await localHandler.ExecuteAsync(
+                    files[0],
+                    files[1],
+                    ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+            }
 
             if (string.IsNullOrWhiteSpace(nuget))
             {
-                Console.Error.WriteLine("--nuget is required.");
+                Console.Error.WriteLine("Either --nuget or --file is required.");
                 return 1;
             }
 

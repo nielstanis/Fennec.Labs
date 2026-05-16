@@ -8,7 +8,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
-| [FD-018](FD-018_COMPARE_LOCAL_FILES.md) | Compare Local Files — Accept Two .nupkg or .dll Files Directly | Open | Medium | Medium |
+| [FD-018](FD-018_COMPARE_LOCAL_FILES.md) | Compare Local Files — Accept Two .nupkg or .dll Files Directly | Pending Verification | Medium | Medium |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Design | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Open | Low | Low |
 

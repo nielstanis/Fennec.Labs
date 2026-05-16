@@ -1,6 +1,6 @@
 # FD-018: Compare Local Files — Accept Two .nupkg or .dll Files Directly
 
-**Status:** Open
+**Status:** Pending Verification
 **Priority:** Medium
 **Effort:** Medium (2–4 hours)
 **Impact:** Lets users diff any two assemblies or packages without publishing to NuGet first —
@@ -38,7 +38,7 @@ fennec compare --file a.nupkg b.nupkg --format json
 var compareFileOption = new Option<string[]>("--file")
 {
     Description = "Two .dll or .nupkg files to compare",
-    Arity = ArgumentArity.ExactlyTwo,
+    Arity = new ArgumentArity(2, 2),
     AllowMultipleArgumentsPerToken = true,
 };
 ```
