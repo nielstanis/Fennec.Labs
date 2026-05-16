@@ -1,6 +1,7 @@
 # FD-017: AssemblyDiff Tier 2 — Structured Diff Records, File Split, PInvokeInfo, Generic Constraints
 
-**Status:** Pending Verification
+**Status:** Complete
+**Completed:** 2026-05-16
 **Priority:** Medium
 **Effort:** High (6–10 hours)
 **Impact:** Replaces the stringly-typed `List<string> Differences` API with a typed

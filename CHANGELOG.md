@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Replace `List<string> Differences` in `AssemblyComparisonResult` with `List<DiffEvent>` — 29 typed record subtypes covering assembly, type, method, field, property, and event diffs; derived views `TypesOnlyInAssembly1/2` and `MethodBodyChanges` computed via LINQ; CLI JSON output updated to `events` and `methodBodyChanges` fields (FD-017)
+- Add `AssemblyComparisonResult.cs` and `DiffEvent.cs` as separate files split from the `AssemblyComparer` monolith (FD-017)
+- Add `CompareNestedTypes` recursion in `AssemblyComparer` — nested types now detected added/removed/modified at any depth (FD-017)
+- Add `MethodPInvokeInfoDiff` — P/Invoke metadata differences now detected and reported (FD-017)
+- Add `TypeSecurityDeclarationDiff` and `MethodSecurityDeclarationDiff` — security declaration presence now compared for both types and methods (FD-017)
 - Add structured output directory: all commands write results under `.fennec/<command>/` subfolders; `compare` and `reproduce` cache results to disk and serve on repeat runs; global `--no-cache` forces a fresh run; scorecard HTML report co-located with `result.json` under a timestamped dir (FD-016)
 - Add global `--format human|json` option (recursive across all subcommands); all five commands emit structured JSON to stdout when `--format json` is passed, with progress suppressed (FD-015)
 - Add `Rendering/ScorecardRenderer` rendering a Spectre.Console table with score thresholds (green ≥7, yellow 4–6.9, red <4) and failing checks inline (FD-014)
