@@ -497,3 +497,7 @@ $RECYCLE.BIN/
 
 # fennec labs output folder
 .fennec/
+
+# Code coverage outputs
+TestResults/
+coverage-report/

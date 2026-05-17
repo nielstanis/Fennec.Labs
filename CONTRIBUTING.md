@@ -39,3 +39,28 @@ dotnet test --filter "Category=Live"
 | `FennecLabs.DotNetCli.Tests` | Yes — runs `dotnet` CLI against real projects |
 | `FennecLabs.Instrumentation.Tests` | No |
 | `FennecLabs.AssemblyDiff.Tests` | No |
+
+## Code Coverage
+
+Coverage is collected via [Coverlet](https://github.com/coverlet-coverage/coverlet) and reported with [ReportGenerator](https://github.com/danielpalme/ReportGenerator). The local tool manifest at `dotnet-tools.json` pins the `reportgenerator` version — restore it once with `dotnet tool restore`.
+
+### Collect coverage
+
+```bash
+dotnet test --settings coverage.runsettings \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults
+```
+
+### Generate HTML report
+
+```bash
+dotnet tool run reportgenerator \
+  -reports:"TestResults/**/coverage.cobertura.xml" \
+  -targetdir:coverage-report \
+  -reporttypes:"Html;TextSummary;Cobertura"
+```
+
+Open `coverage-report/index.html` to browse line-level coverage. The text summary is at `coverage-report/Summary.txt`.
+
+Test assemblies and `FennecLabs.TestUtilities` are excluded from coverage measurement via `coverage.runsettings`.
