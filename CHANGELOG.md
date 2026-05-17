@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `coverage.runsettings` (Coverlet/Cobertura config), `dotnet-reportgenerator-globaltool` local tool manifest, and `CONTRIBUTING.md` coverage workflow — single-command collect + HTML report generation (FD-021)
 - Extract `NupkgHelper` static class with `ExtractAsync` and `GetDlls` — eliminates duplicated nupkg extraction logic from `ReproduceCommandHandler` and `CompareLocalFilesCommandHandler` (FD-019)
 - Add `compare --file a b` — compare two local `.dll` or `.nupkg` files without NuGet; supports human and JSON output with same schema as NuGet compare path (FD-018)
 - Replace `List<string> Differences` in `AssemblyComparisonResult` with `List<DiffEvent>` — 29 typed record subtypes covering assembly, type, method, field, property, and event diffs; derived views `TypesOnlyInAssembly1/2` and `MethodBodyChanges` computed via LINQ; CLI JSON output updated to `events` and `methodBodyChanges` fields (FD-017)
