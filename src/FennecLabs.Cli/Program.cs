@@ -76,20 +76,20 @@ class Program
         {
             Description = "Path to the .csproj file"
         };
-        var reportOption = new Option<bool>("--report", "-r")
+        var reportFormatOption = new Option<string>("--report-format")
         {
-            Description = "Generate an HTML report with scorecard results and dependency tree"
+            Description = "Generate a report in the specified format(s): html, md, or html,md"
         };
 
         var scorecardCommand = new Command("scorecard", "Get security scorecards for packages in a project");
         scorecardCommand.Options.Add(projectPathOption);
-        scorecardCommand.Options.Add(reportOption);
+        scorecardCommand.Options.Add(reportFormatOption);
         scorecardCommand.SetAction(async (ParseResult parseResult) =>
         {
             var handler = new ScorecardCommandHandler(new ScorecardClient());
             return await handler.ExecuteAsync(
                 parseResult.GetValue(projectPathOption),
-                parseResult.GetValue(reportOption),
+                parseResult.GetValue(reportFormatOption),
                 ResolveOutputMode(parseResult.GetValue(globalFormatOption)),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec");
         });
