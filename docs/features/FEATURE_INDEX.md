@@ -8,6 +8,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
+| [FD-023](FD-023_ASSEMBLYDIFF_COVERAGE.md) | AssemblyDiff Test Coverage — DiffEvent Subtypes | Open | Medium | Medium |
 | [FD-022](FD-022_CLI_TEST_COVERAGE.md) | FennecLabs.Cli Test Coverage | Open | Medium | Medium |
 | [FD-021](FD-021_CODE_COVERAGE.md) | Code Coverage with Coverlet and ReportGenerator | Open | Low | Medium |
 | [FD-020](FD-020_SCORECARD_REPORT_FORMATS.md) | Scorecard Report — JSON-Driven and MD/HTML Formats | Open | Medium | Medium |
