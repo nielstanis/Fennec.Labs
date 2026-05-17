@@ -1,6 +1,7 @@
 # FD-020: Scorecard Report — JSON-Driven Generation and MD/HTML Format Support
 
-**Status:** Open
+**Status:** Complete
+**Completed:** 2026-05-17
 **Priority:** Medium
 **Effort:** Medium (3–5 hours)
 **Impact:** Persists the full dependency tree in `result.json` so reports can be regenerated

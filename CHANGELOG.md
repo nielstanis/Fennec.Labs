@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `ScorecardReportBuilder` with `BuildHtml` and `BuildMarkdown`; `result.json` enriched with `project`, `framework`, `generatedAt`, and `dependencyTree` (top-level + transitive); `--report-format html|md|html,md` replaces `--report` bool flag (FD-020)
 - Add `coverage.runsettings` (Coverlet/Cobertura config), `dotnet-reportgenerator-globaltool` local tool manifest, and `CONTRIBUTING.md` coverage workflow — single-command collect + HTML report generation (FD-021)
 - Extract `NupkgHelper` static class with `ExtractAsync` and `GetDlls` — eliminates duplicated nupkg extraction logic from `ReproduceCommandHandler` and `CompareLocalFilesCommandHandler` (FD-019)
 - Add `compare --file a b` — compare two local `.dll` or `.nupkg` files without NuGet; supports human and JSON output with same schema as NuGet compare path (FD-018)
