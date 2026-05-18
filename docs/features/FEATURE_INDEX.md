@@ -9,7 +9,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
 | [FD-023](FD-023_ASSEMBLYDIFF_COVERAGE.md) | AssemblyDiff Test Coverage — DiffEvent Subtypes | Open | Medium | Medium |
-| [FD-022](FD-022_CLI_TEST_COVERAGE.md) | FennecLabs.Cli Test Coverage | Open | Medium | Medium |
+| [FD-022](FD-022_CLI_TEST_COVERAGE.md) | FennecLabs.Cli Test Coverage | In Progress | Medium | Medium |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Design | Low | Low |
 

@@ -11,6 +11,7 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/FennecLabs.AssemblyDiff.Tests/FennecLabs.AssemblyDiff.Tests.csproj" />
+    <Project Path="test/FennecLabs.Cli.Tests/FennecLabs.Cli.Tests.csproj" />
     <Project Path="test/FennecLabs.Instrumentation.Tests/FennecLabs.Instrumentation.Tests.csproj" />
     <Project Path="test/FennecLabs.TestUtilities/FennecLabs.TestUtilities.csproj" />
   </Folder>
