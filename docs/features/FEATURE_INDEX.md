@@ -10,13 +10,14 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 |----|-------|--------|--------|----------|
 | [FD-023](FD-023_ASSEMBLYDIFF_COVERAGE.md) | AssemblyDiff Test Coverage — DiffEvent Subtypes | Open | Medium | Medium |
 | [FD-022](FD-022_CLI_TEST_COVERAGE.md) | FennecLabs.Cli Test Coverage | Open | Medium | Medium |
-| [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Design | High | High |
-| [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Open | Low | Low |
+| [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
+| [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Design | Low | Low |
 
 ## Completed
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-024](archive/FD-024_CLI_OUTPUT_JSON_FLAG.md) | Replace --format with --json / -j Flag | 2026-05-17 | `--format human\|json` replaced by boolean `--json`/`-j`; `ResolveOutputMode` takes `bool` |
 | [FD-020](archive/FD-020_SCORECARD_REPORT_FORMATS.md) | Scorecard Report — JSON-Driven and MD/HTML Formats | 2026-05-17 | `ScorecardReportBuilder` with `BuildHtml`/`BuildMarkdown`; `result.json` enriched with `project`, `framework`, `generatedAt`, `dependencyTree`; `--report-format html\|md\|html,md` replaces `--report` bool |
 | [FD-021](archive/FD-021_CODE_COVERAGE.md) | Code Coverage with Coverlet and ReportGenerator | 2026-05-17 | `coverage.runsettings` + `dotnet-reportgenerator-globaltool` local tool; `CONTRIBUTING.md` coverage workflow docs |
 | [FD-019](archive/FD-019_NUPKG_HELPER_CONSOLIDATION.md) | Consolidate nupkg Extraction Helpers | 2026-05-17 | `NupkgHelper` static class; `ExtractAsync` + `GetDlls` shared by Reproduce and CompareLocalFiles |

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replace `--format human|json` string option with boolean `--json` / `-j` flag across all commands; human-readable output remains the default (FD-024)
+
 ### Added
 
 - Add `ScorecardReportBuilder` with `BuildHtml` and `BuildMarkdown`; `result.json` enriched with `project`, `framework`, `generatedAt`, and `dependencyTree` (top-level + transitive); `--report-format html|md|html,md` replaces `--report` bool flag (FD-020)

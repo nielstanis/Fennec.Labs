@@ -12,13 +12,12 @@ class Program
     {
         var rootCommand = new RootCommand("Fennec Labs CLI");
 
-        var globalFormatOption = new Option<string>("--format")
+        var globalJsonOption = new Option<bool>("--json", "-j")
         {
-            Description = "Output format: human or json (default: human)",
-            DefaultValueFactory = _ => "human",
+            Description = "Write output as JSON",
             Recursive = true,
         };
-        rootCommand.Options.Add(globalFormatOption);
+        rootCommand.Options.Add(globalJsonOption);
 
         var globalOutputOption = new Option<string>("--output", "-o")
         {
@@ -68,7 +67,7 @@ class Program
                 parseResult.GetValue(versionOption),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec",
                 parseResult.GetValue(fileFormatOption) ?? "fxt",
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
         });
 
         // scorecard command
@@ -90,7 +89,7 @@ class Program
             return await handler.ExecuteAsync(
                 parseResult.GetValue(projectPathOption),
                 parseResult.GetValue(reportFormatOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)),
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec");
         });
 
@@ -132,7 +131,7 @@ class Program
                 return await localHandler.ExecuteAsync(
                     files[0],
                     files[1],
-                    ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                    ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
             }
 
             if (string.IsNullOrWhiteSpace(nuget))
@@ -145,7 +144,7 @@ class Program
             return await handler.ExecuteAsync(
                 nuget,
                 parseResult.GetValue(compareVersionOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)),
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec",
                 parseResult.GetValue(globalNoCacheOption));
         });
@@ -189,7 +188,7 @@ class Program
                 filename,
                 nuget,
                 parseResult.GetValue(reproduceVersionOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)),
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec",
                 parseResult.GetValue(globalNoCacheOption));
         });
@@ -202,7 +201,7 @@ class Program
         {
             var handler = new FeedsCommandHandler();
             return await handler.ExecuteListAsync(
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
         });
         feedsCommand.Subcommands.Add(feedsListCommand);
 
@@ -221,7 +220,7 @@ class Program
                 parseResult.GetValue(feedAddNameOption),
                 parseResult.GetValue(feedAddSourceOption),
                 parseResult.GetValue(feedAddDefaultOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
         });
         feedsCommand.Subcommands.Add(feedsAddCommand);
 
@@ -234,7 +233,7 @@ class Program
             var handler = new FeedsCommandHandler();
             return await handler.ExecuteRemoveAsync(
                 parseResult.GetValue(feedRemoveNameOption),
-                ResolveOutputMode(parseResult.GetValue(globalFormatOption)));
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
         });
         feedsCommand.Subcommands.Add(feedsRemoveCommand);
 
@@ -247,8 +246,6 @@ class Program
         return await rootCommand.Parse(args).InvokeAsync();
     }
 
-    private static OutputMode ResolveOutputMode(string? format) =>
-        string.Equals(format, "json", StringComparison.OrdinalIgnoreCase)
-            ? OutputMode.Json
-            : OutputMode.Human;
+    private static OutputMode ResolveOutputMode(bool json) =>
+        json ? OutputMode.Json : OutputMode.Human;
 }
