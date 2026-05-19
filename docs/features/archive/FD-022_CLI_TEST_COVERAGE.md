@@ -1,6 +1,7 @@
 # FD-022: FennecLabs.Cli Test Coverage
 
-**Status:** In Progress
+**Status:** Complete
+**Completed:** 2026-05-19
 **Priority:** Medium
 **Effort:** Medium (3–5 hours)
 **Impact:** Gives `FennecLabs.Cli` non-zero coverage (currently 0%); catches regressions in
