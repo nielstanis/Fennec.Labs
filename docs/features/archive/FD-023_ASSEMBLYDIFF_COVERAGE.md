@@ -1,6 +1,7 @@
 # FD-023: AssemblyDiff Test Coverage — DiffEvent Subtypes
 
-**Status:** Open
+**Status:** Complete
+**Completed:** 2026-05-19
 **Priority:** Medium
 **Effort:** Medium (2–4 hours)
 **Impact:** Raises `FennecLabs.AssemblyDiff` from 61.9% to ~85%+ line coverage; validates
