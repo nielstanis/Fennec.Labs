@@ -76,7 +76,7 @@ jobs:
 
       - name: Write coverage summary
         if: always()
-        run: cat coverage-report/Summary.md >> "$GITHUB_STEP_SUMMARY"
+        run: cat coverage-report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
