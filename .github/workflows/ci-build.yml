@@ -1,0 +1,87 @@
+name: CI Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '.github/**'
+      - 'docs/**'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '.github/**'
+      - 'docs/**'
+
+# Do not harden the runner in this workflow — build and test tasks require free network access.
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9  # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build FennecLabs.slnx --configuration Debug
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: build-artifacts
+          path: src/**/*.nupkg
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Test
+        run: >
+          dotnet test FennecLabs.slnx
+          --configuration Debug
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --settings coverage.runsettings
+          --logger trx
+          --results-directory TestResults
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040  # v2.23.0
+        if: always()
+        with:
+          files: TestResults/**/*.trx
+
+      - name: Generate coverage report
+        uses: danielpalme/ReportGenerator-GitHub-Action@049f7ec958c672fd31d5cc1cb01622dc8d2e23ab  # 5.5.10
+        if: always()
+        with:
+          reports: TestResults/**/coverage.cobertura.xml
+          targetdir: coverage-report
+          reporttypes: MarkdownSummaryGithub
+
+      - name: Write coverage summary
+        if: always()
+        run: cat coverage-report/Summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage-report/
+          retention-days: 5

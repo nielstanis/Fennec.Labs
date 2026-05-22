@@ -1,0 +1,96 @@
+name: Prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      perform_publish:
+        description: 'Publish package to feedz.io'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and Attest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9  # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build FennecLabs.slnx --configuration Release
+
+      - name: Test
+        run: >
+          dotnet test FennecLabs.slnx
+          --configuration Release
+          --no-build
+          --logger trx
+          --results-directory TestResults
+
+      - name: Pack
+        run: >
+          dotnet pack src/FennecLabs.Cli/Fennec.csproj
+          --configuration Release
+          --no-build
+          --output ./artifacts/packages
+          --version-suffix "preview.${{ github.run_number }}"
+
+      - name: Attest packages
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be  # v2
+        with:
+          subject-path: ./artifacts/packages/*.nupkg
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: prerelease-packages
+          path: ./artifacts/packages/
+          retention-days: 5
+
+  publish:
+    name: Publish to feedz.io
+    runs-on: ubuntu-latest
+    needs: build
+    if: inputs.perform_publish
+    environment: prerelease
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          name: prerelease-packages
+          path: ./artifacts/packages
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9  # v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Push to feedz.io
+        # zizmor: ignore[use-trusted-publishing] -- feedz.io does not support OIDC trusted publishing
+        env:
+          FEEDZ_FEED_URL: ${{ secrets.FEEDZ_FEED_URL }}
+          FEEDZ_API_KEY: ${{ secrets.FEEDZ_API_KEY }}
+        run: >
+          dotnet nuget push ./artifacts/packages/*.nupkg
+          --source "$FEEDZ_FEED_URL"
+          --api-key "$FEEDZ_API_KEY"
+          --skip-duplicate
