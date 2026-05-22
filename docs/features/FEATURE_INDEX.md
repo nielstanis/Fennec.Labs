@@ -8,7 +8,6 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
-| [FD-025](FD-025_GITHUB_ACTIONS_WORKFLOWS.md) | GitHub Actions Workflows — CI, Scanning, and Release Pipeline | Pending Verification | Medium | High |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Design | Low | Low |
 
@@ -16,6 +15,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-025](archive/FD-025_GITHUB_ACTIONS_WORKFLOWS.md) | GitHub Actions Workflows — CI, Scanning, and Release Pipeline | 2026-05-22 | 6 workflows (ci-build, codeql, zizmor, dependency-review, prerelease, release); dependabot + CODEOWNERS; all actions SHA-pinned; zizmor-clean |
 | [FD-023](archive/FD-023_ASSEMBLYDIFF_COVERAGE.md) | AssemblyDiff Test Coverage — DiffEvent Subtypes | 2026-05-19 | `DiffEventFormatMessageTests.cs` (28 tests) + 27 comparer tests; 83 total; `FennecLabs.AssemblyDiff` line coverage 86.8% |
 | [FD-022](archive/FD-022_CLI_TEST_COVERAGE.md) | FennecLabs.Cli Test Coverage | 2026-05-19 | `FennecLabs.Cli.Tests` project; 24 tests covering `OutputCache`, `ColorTheme`, `NupkgHelper`, `CompareLocalFilesCommandHandler`; `InternalsVisibleTo` on `Fennec.csproj` |
 | [FD-024](archive/FD-024_CLI_OUTPUT_JSON_FLAG.md) | Replace --format with --json / -j Flag | 2026-05-17 | `--format human\|json` replaced by boolean `--json`/`-j`; `ResolveOutputMode` takes `bool` |

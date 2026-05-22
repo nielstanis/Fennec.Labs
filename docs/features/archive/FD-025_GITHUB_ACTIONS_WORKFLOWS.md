@@ -1,6 +1,7 @@
 # FD-025: GitHub Actions Workflows — CI, Scanning, and Release Pipeline
 
-**Status:** Pending Verification
+**Status:** Complete
+**Completed:** 2026-05-22
 **Priority:** High
 **Effort:** Medium (2-4 hours)
 **Impact:** Automated build/test/coverage on every push, security scanning, and a signed attested release pipeline to nuget.org
