@@ -5,6 +5,8 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackAsTool>true</PackAsTool>
+    <PackageId>Fennec.Labs</PackageId>
+    <ToolCommandName>fennec</ToolCommandName>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

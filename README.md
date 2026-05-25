@@ -5,7 +5,7 @@ A .NET CLI tool for analyzing .NET projects — assembly diffing, NuGet inspecti
 ## Installation
 
 ```bash
-dotnet tool install --global FennecLabs
+dotnet tool install --global Fennec.Labs
 ```
 
 Or run from source:
