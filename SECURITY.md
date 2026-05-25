@@ -11,7 +11,7 @@
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Report vulnerabilities by emailing **niels.tanis@gmail.com** with:
+Report vulnerabilities by emailing **security@fennec.dev** with:
 
 - A description of the vulnerability and its potential impact
 - Steps to reproduce or a proof-of-concept
