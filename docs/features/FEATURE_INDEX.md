@@ -8,7 +8,6 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
-| [FD-026](FD-026_README_CONTENT.md) | README.md Content — CLI Usage, SECURITY.md, CONTRIBUTING.md | In Progress | Low | Medium |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Design | Low | Low |
 
@@ -16,6 +15,8 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-027](archive/FD-027_RENAME_NUGET_ID.md) | Rename NuGet Package ID to Fennec.Labs | 2026-05-25 | `<PackageId>` set to `Fennec.Labs`; README and release workflows updated |
+| [FD-026](archive/FD-026_README_CONTENT.md) | README.md Content — CLI Usage, SECURITY.md, CONTRIBUTING.md | 2026-05-25 | Usage section, SECURITY.md created, CONTRIBUTING.md reference added |
 | [FD-025](archive/FD-025_GITHUB_ACTIONS_WORKFLOWS.md) | GitHub Actions Workflows — CI, Scanning, and Release Pipeline | 2026-05-22 | 6 workflows (ci-build, codeql, zizmor, dependency-review, prerelease, release); dependabot + CODEOWNERS; all actions SHA-pinned; zizmor-clean |
 | [FD-023](archive/FD-023_ASSEMBLYDIFF_COVERAGE.md) | AssemblyDiff Test Coverage — DiffEvent Subtypes | 2026-05-19 | `DiffEventFormatMessageTests.cs` (28 tests) + 27 comparer tests; 83 total; `FennecLabs.AssemblyDiff` line coverage 86.8% |
 | [FD-022](archive/FD-022_CLI_TEST_COVERAGE.md) | FennecLabs.Cli Test Coverage | 2026-05-19 | `FennecLabs.Cli.Tests` project; 24 tests covering `OutputCache`, `ColorTheme`, `NupkgHelper`, `CompareLocalFilesCommandHandler`; `InternalsVisibleTo` on `Fennec.csproj` |
