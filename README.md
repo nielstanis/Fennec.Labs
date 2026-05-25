@@ -1,4 +1,6 @@
-# FennecLabs
+# Fennec.Labs
+
+<img src="https://github.com/nielstanis/Fennec.Labs/blob/main/FennecLabs.png?raw=true" alt="Fennec.Labs" style="width:50%; height:auto;">
 
 A .NET CLI tool for analyzing .NET projects — assembly diffing, NuGet inspection, IL instrumentation, OpenSSF Scorecard checks, and NuGet feed management.
 
