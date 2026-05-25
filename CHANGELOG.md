@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Rename NuGet package ID from `FennecLabs` to `Fennec.Labs`; install command updated to `dotnet tool install --global Fennec.Labs` (FD-027)
 - Replace `--format human|json` string option with boolean `--json` / `-j` flag across all commands; human-readable output remains the default (FD-024)
 
 ### Added
 
+- Add `README.md` usage section covering all five commands with representative examples, `--json` flag, and `.fennec/` output cache convention; add `SECURITY.md` with vulnerability reporting process; add Contributing section linking to `CONTRIBUTING.md` (FD-026)
 - Add `.github/` with 6 SHA-pinned, zizmor-clean workflows: CI build with TRX test results and Cobertura coverage summary, CodeQL SAST (weekly + on push), zizmor workflow scan, dependency-review license/CVE gate, manual prerelease pipeline (build → attest → feedz.io), and tag-triggered release pipeline (build → attest → nuget.org via trusted publishing); dependabot daily updates with 7-day cooldown; CODEOWNERS (FD-025)
 - Add `DiffEventFormatMessageTests.cs` (28 pure `FormatMessage` unit tests) and 27 `AssemblyComparer` integration tests covering assembly name/version/attribute, type base/interface/flag, method flag/body-presence/locals/exception-handlers, field, property accessor, and event diffs; `FennecLabs.AssemblyDiff` line coverage 86.8% (FD-023)
 - Add `FennecLabs.Cli.Tests` project with 24 tests covering `OutputCache` path methods and read/write, `ColorTheme.ForScore` boundaries, `NupkgHelper.GetDlls` and `ExtractAsync`, and `CompareLocalFilesCommandHandler` validation and DLL comparison paths (FD-022)
