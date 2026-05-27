@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <PackAsTool>true</PackAsTool>
     <PackageId>Fennec.Labs</PackageId>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <ToolCommandName>fennec</ToolCommandName>
     <Nullable>enable</Nullable>
   </PropertyGroup>

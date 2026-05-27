@@ -110,3 +110,9 @@ Please read [SECURITY.md](SECURITY.md) for how to report vulnerabilities.
 ## Contributing
 
 All contributions go through a feature branch and pull request — never commit directly to `main`. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow, test categories, and code coverage setup.
+
+## License
+
+This project is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later).
+
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
