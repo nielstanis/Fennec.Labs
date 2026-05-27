@@ -15,6 +15,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-028](archive/FD-028_ADD_AGPL_V3_LICENSE.md) | Add GNU Affero General Public License v3.0 | 2026-05-27 | AGPL-3.0-or-later `LICENSE` file; `PackageLicenseExpression` in csproj; all deps audited MIT/Apache-2.0 compatible |
 | [FD-027](archive/FD-027_RENAME_NUGET_ID.md) | Rename NuGet Package ID to Fennec.Labs | 2026-05-25 | `<PackageId>` set to `Fennec.Labs`; README and release workflows updated |
 | [FD-026](archive/FD-026_README_CONTENT.md) | README.md Content — CLI Usage, SECURITY.md, CONTRIBUTING.md | 2026-05-25 | Usage section, SECURITY.md created, CONTRIBUTING.md reference added |
 | [FD-025](archive/FD-025_GITHUB_ACTIONS_WORKFLOWS.md) | GitHub Actions Workflows — CI, Scanning, and Release Pipeline | 2026-05-22 | 6 workflows (ci-build, codeql, zizmor, dependency-review, prerelease, release); dependabot + CODEOWNERS; all actions SHA-pinned; zizmor-clean |
