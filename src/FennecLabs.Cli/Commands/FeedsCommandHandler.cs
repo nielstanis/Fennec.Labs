@@ -50,19 +50,8 @@ internal class FeedsCommandHandler
         return 0;
     }
 
-    public async Task<int> ExecuteAddAsync(string? name, string? source, bool setDefault, OutputMode outputMode)
+    public async Task<int> ExecuteAddAsync(string name, string source, bool setDefault, OutputMode outputMode)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            Console.Error.WriteLine("--name is required.");
-            return 1;
-        }
-        if (string.IsNullOrWhiteSpace(source))
-        {
-            Console.Error.WriteLine("--source is required.");
-            return 1;
-        }
-
         try
         {
             var feedService = new FeedService();
@@ -82,14 +71,8 @@ internal class FeedsCommandHandler
         }
     }
 
-    public async Task<int> ExecuteRemoveAsync(string? name, OutputMode outputMode)
+    public async Task<int> ExecuteRemoveAsync(string name, OutputMode outputMode)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            Console.Error.WriteLine("--name is required.");
-            return 1;
-        }
-
         try
         {
             var configManager = new ConfigurationManager();
