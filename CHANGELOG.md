@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Commands now print full help after a missing-argument error: `instrument` and `compare` invoke subcommand help on mutual-exclusion failures; `reproduce`, `feeds add`, and `feeds remove` use `Required = true` for automatic System.CommandLine validation (FD-030)
+- Add short aliases for all options that previously had only long forms: `-C`/`--no-cache` (global), `-r`/`--report-format` (scorecard), `-f`/`--file` (compare), `-d`/`--default` (feeds add); all subcommand effective alias sets verified clash-free (FD-031)
 - Rename NuGet package ID from `FennecLabs` to `Fennec.Labs`; install command updated to `dotnet tool install --global Fennec.Labs` (FD-027)
 - Replace `--format human|json` string option with boolean `--json` / `-j` flag across all commands; human-readable output remains the default (FD-024)
 

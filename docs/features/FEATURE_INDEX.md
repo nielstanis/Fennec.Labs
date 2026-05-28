@@ -9,8 +9,6 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
 | [FD-032](FD-032_REPRODUCE_FROM_DIRECTORY.md) | Reproduce from a directory of DLL files | Open | Medium | Medium |
-| [FD-031](FD-031_SHORT_AND_LONG_OPTION_ALIASES.md) | Every option gets both -x and --word aliases, no clashes | Pending Verification | Low | Low |
-| [FD-030](FD-030_SHOW_HELP_ON_MISSING_ARGS.md) | Show full help when required arguments are missing | Pending Verification | Low | Medium |
 | [FD-029](FD-029_SURFACE_DOTNET_LIST_ERROR.md) | Surface dotnet list package stderr errors in scorecard command | Open | Low | Medium |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Design | Low | Low |
@@ -19,6 +17,8 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-031](archive/FD-031_SHORT_AND_LONG_OPTION_ALIASES.md) | Every option gets both -x and --word aliases, no clashes | 2026-05-28 | Add `-C`, `-r`, `-f`, `-d` short aliases; all effective alias sets clash-free |
+| [FD-030](archive/FD-030_SHOW_HELP_ON_MISSING_ARGS.md) | Show full help when required arguments are missing | 2026-05-28 | `Required=true` for reproduce/feeds; instrument/compare invoke help on mutual-exclusion errors |
 | [FD-028](archive/FD-028_ADD_AGPL_V3_LICENSE.md) | Add GNU Affero General Public License v3.0 | 2026-05-27 | AGPL-3.0-or-later `LICENSE` file; `PackageLicenseExpression` in csproj; all deps audited MIT/Apache-2.0 compatible |
 | [FD-027](archive/FD-027_RENAME_NUGET_ID.md) | Rename NuGet Package ID to Fennec.Labs | 2026-05-25 | `<PackageId>` set to `Fennec.Labs`; README and release workflows updated |
 | [FD-026](archive/FD-026_README_CONTENT.md) | README.md Content — CLI Usage, SECURITY.md, CONTRIBUTING.md | 2026-05-25 | Usage section, SECURITY.md created, CONTRIBUTING.md reference added |
