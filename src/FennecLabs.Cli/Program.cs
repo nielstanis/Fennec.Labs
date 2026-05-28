@@ -27,7 +27,7 @@ class Program
         };
         rootCommand.Options.Add(globalOutputOption);
 
-        var globalNoCacheOption = new Option<bool>("--no-cache")
+        var globalNoCacheOption = new Option<bool>("--no-cache", "-C")
         {
             Description = "Bypass cached results and force a fresh run",
             Recursive = true,
@@ -60,10 +60,20 @@ class Program
         instrumentCommand.Options.Add(fileFormatOption);
         instrumentCommand.SetAction(async (ParseResult parseResult) =>
         {
+            var filename = parseResult.GetValue(filenameOption);
+            var nuget = parseResult.GetValue(nugetOption);
+
+            if (string.IsNullOrWhiteSpace(filename) && string.IsNullOrWhiteSpace(nuget))
+            {
+                Console.Error.WriteLine("Either --filename or --nuget is required.");
+                await rootCommand.Parse(["instrument", "--help"]).InvokeAsync();
+                return 1;
+            }
+
             var handler = new InstrumentCommandHandler(new NuGetService());
             return await handler.ExecuteAsync(
-                parseResult.GetValue(filenameOption),
-                parseResult.GetValue(nugetOption),
+                filename,
+                nuget,
                 parseResult.GetValue(versionOption),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec",
                 parseResult.GetValue(fileFormatOption) ?? "fxt",
@@ -75,7 +85,7 @@ class Program
         {
             Description = "Path to the .csproj file"
         };
-        var reportFormatOption = new Option<string>("--report-format")
+        var reportFormatOption = new Option<string>("--report-format", "-r")
         {
             Description = "Generate a report in the specified format(s): html, md, or html,md"
         };
@@ -102,7 +112,7 @@ class Program
         {
             Description = "Version to compare (optional, uses latest if not specified)"
         };
-        var compareFileOption = new Option<string[]>("--file")
+        var compareFileOption = new Option<string[]>("--file", "-f")
         {
             Description = "Two .dll or .nupkg files to compare",
             Arity = new ArgumentArity(2, 2),
@@ -137,6 +147,7 @@ class Program
             if (string.IsNullOrWhiteSpace(nuget))
             {
                 Console.Error.WriteLine("Either --nuget or --file is required.");
+                await rootCommand.Parse(["compare", "--help"]).InvokeAsync();
                 return 1;
             }
 
@@ -152,11 +163,13 @@ class Program
         // reproduce command
         var reproduceFilenameOption = new Option<string>("--filename", "-f")
         {
-            Description = "Path to the .nupkg file to compare"
+            Description = "Path to the .nupkg file to compare",
+            Required = true,
         };
         var reproduceNugetOption = new Option<string>("--nuget", "-n")
         {
-            Description = "NuGet package ID to compare against"
+            Description = "NuGet package ID to compare against",
+            Required = true,
         };
         var reproduceVersionOption = new Option<string>("--version", "-v")
         {
@@ -169,24 +182,10 @@ class Program
         reproduceCommand.Options.Add(reproduceVersionOption);
         reproduceCommand.SetAction(async (ParseResult parseResult) =>
         {
-            var filename = parseResult.GetValue(reproduceFilenameOption);
-            var nuget = parseResult.GetValue(reproduceNugetOption);
-
-            if (string.IsNullOrWhiteSpace(filename))
-            {
-                Console.Error.WriteLine("--filename is required.");
-                return 1;
-            }
-            if (string.IsNullOrWhiteSpace(nuget))
-            {
-                Console.Error.WriteLine("--nuget is required.");
-                return 1;
-            }
-
             var handler = new ReproduceCommandHandler(new NuGetService());
             return await handler.ExecuteAsync(
-                filename,
-                nuget,
+                parseResult.GetValue(reproduceFilenameOption)!,
+                parseResult.GetValue(reproduceNugetOption)!,
                 parseResult.GetValue(reproduceVersionOption),
                 ResolveOutputMode(parseResult.GetValue(globalJsonOption)),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec",
@@ -205,9 +204,9 @@ class Program
         });
         feedsCommand.Subcommands.Add(feedsListCommand);
 
-        var feedAddNameOption = new Option<string>("--name", "-n") { Description = "Feed name" };
-        var feedAddSourceOption = new Option<string>("--source", "-s") { Description = "Feed source URL" };
-        var feedAddDefaultOption = new Option<bool>("--default") { Description = "Set as default feed" };
+        var feedAddNameOption = new Option<string>("--name", "-n") { Description = "Feed name", Required = true };
+        var feedAddSourceOption = new Option<string>("--source", "-s") { Description = "Feed source URL", Required = true };
+        var feedAddDefaultOption = new Option<bool>("--default", "-d") { Description = "Set as default feed" };
 
         var feedsAddCommand = new Command("add", "Add a NuGet feed source");
         feedsAddCommand.Options.Add(feedAddNameOption);
@@ -217,14 +216,14 @@ class Program
         {
             var handler = new FeedsCommandHandler();
             return await handler.ExecuteAddAsync(
-                parseResult.GetValue(feedAddNameOption),
-                parseResult.GetValue(feedAddSourceOption),
+                parseResult.GetValue(feedAddNameOption)!,
+                parseResult.GetValue(feedAddSourceOption)!,
                 parseResult.GetValue(feedAddDefaultOption),
                 ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
         });
         feedsCommand.Subcommands.Add(feedsAddCommand);
 
-        var feedRemoveNameOption = new Option<string>("--name", "-n") { Description = "Name of the feed to remove" };
+        var feedRemoveNameOption = new Option<string>("--name", "-n") { Description = "Name of the feed to remove", Required = true };
 
         var feedsRemoveCommand = new Command("remove", "Remove a NuGet feed source");
         feedsRemoveCommand.Options.Add(feedRemoveNameOption);
@@ -232,7 +231,7 @@ class Program
         {
             var handler = new FeedsCommandHandler();
             return await handler.ExecuteRemoveAsync(
-                parseResult.GetValue(feedRemoveNameOption),
+                parseResult.GetValue(feedRemoveNameOption)!,
                 ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
         });
         feedsCommand.Subcommands.Add(feedsRemoveCommand);

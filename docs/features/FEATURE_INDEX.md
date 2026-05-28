@@ -8,6 +8,9 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
+| [FD-031](FD-031_SHORT_AND_LONG_OPTION_ALIASES.md) | Every option gets both -x and --word aliases, no clashes | Pending Verification | Low | Low |
+| [FD-030](FD-030_SHOW_HELP_ON_MISSING_ARGS.md) | Show full help when required arguments are missing | Pending Verification | Low | Medium |
+| [FD-029](FD-029_SURFACE_DOTNET_LIST_ERROR.md) | Surface dotnet list package stderr errors in scorecard command | Open | Low | Medium |
 | [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
 | [FD-009](FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | Design | Low | Low |
 

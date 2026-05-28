@@ -26,11 +26,7 @@ internal class InstrumentCommandHandler
     {
         if (!string.IsNullOrWhiteSpace(nuget))
             return await InstrumentNuGetPackageAsync(nuget, version, output, fileFormat, outputMode);
-        if (!string.IsNullOrWhiteSpace(filename))
-            return await InstrumentAssemblyAsync(filename, output, fileFormat, outputMode);
-
-        Console.Error.WriteLine("Either --filename or --nuget must be specified.");
-        return 1;
+        return await InstrumentAssemblyAsync(filename!, output, fileFormat, outputMode);
     }
 
     private static async Task<int> InstrumentAssemblyAsync(
