@@ -6,8 +6,19 @@ A .NET CLI tool for analyzing .NET projects — assembly diffing, NuGet inspecti
 
 ## Installation
 
+Fennec Labs has not been released to NuGet at this point (yet). You can either add the following nuget.config on your system and get the tool installed on your system.
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+ <packageSources>
+    <add key="fennec-feedz" value="https://f.feedz.io/fennec/labs/nuget/index.json" /> 
+</packageSources>
+</configuration>
+```
+
 ```bash
-dotnet tool install --global Fennec.Labs
+dotnet tool install --global fennec.labs --version 0.7.5-preview.2
 ```
 
 Or run from source:
