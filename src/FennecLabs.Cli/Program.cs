@@ -163,8 +163,15 @@ class Program
         // reproduce command
         var reproduceFilenameOption = new Option<string>("--filename", "-f")
         {
-            Description = "Path to the .nupkg file to compare",
-            Required = true,
+            Description = "Path to the .nupkg file to compare"
+        };
+        var reproduceDirOption = new Option<string>("--directory", "-d")
+        {
+            Description = "Path to a build output directory of .dll files to compare"
+        };
+        var reproduceTfmOption = new Option<string>("--tfm", "-t")
+        {
+            Description = "Target framework moniker (e.g. net8.0); derived from directory name if omitted"
         };
         var reproduceNugetOption = new Option<string>("--nuget", "-n")
         {
@@ -176,15 +183,37 @@ class Program
             Description = "Version to compare against (optional, uses latest if not specified)"
         };
 
-        var reproduceCommand = new Command("reproduce", "Compare a local .nupkg file with a NuGet package from the feed");
+        var reproduceCommand = new Command("reproduce", "Compare a local .nupkg file or directory with a NuGet package from the feed");
         reproduceCommand.Options.Add(reproduceFilenameOption);
+        reproduceCommand.Options.Add(reproduceDirOption);
+        reproduceCommand.Options.Add(reproduceTfmOption);
         reproduceCommand.Options.Add(reproduceNugetOption);
         reproduceCommand.Options.Add(reproduceVersionOption);
         reproduceCommand.SetAction(async (ParseResult parseResult) =>
         {
+            var directory = parseResult.GetValue(reproduceDirOption);
+            var filename = parseResult.GetValue(reproduceFilenameOption);
+            var tfm = parseResult.GetValue(reproduceTfmOption);
+
+            if (!string.IsNullOrWhiteSpace(tfm) && string.IsNullOrWhiteSpace(directory))
+            {
+                Console.Error.WriteLine("--tfm requires --directory.");
+                await rootCommand.Parse(["reproduce", "--help"]).InvokeAsync();
+                return 1;
+            }
+
+            if (string.IsNullOrWhiteSpace(directory) && string.IsNullOrWhiteSpace(filename))
+            {
+                Console.Error.WriteLine("Either --filename or --directory is required.");
+                await rootCommand.Parse(["reproduce", "--help"]).InvokeAsync();
+                return 1;
+            }
+
             var handler = new ReproduceCommandHandler(new NuGetService());
             return await handler.ExecuteAsync(
-                parseResult.GetValue(reproduceFilenameOption)!,
+                string.IsNullOrWhiteSpace(directory) ? filename : null,
+                string.IsNullOrWhiteSpace(directory) ? null : directory,
+                tfm,
                 parseResult.GetValue(reproduceNugetOption)!,
                 parseResult.GetValue(reproduceVersionOption),
                 ResolveOutputMode(parseResult.GetValue(globalJsonOption)),
