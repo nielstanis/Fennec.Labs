@@ -1,6 +1,7 @@
 # FD-033: Fix Zip-Slip Path Traversal in NupkgHelper.ExtractAsync
 
-**Status:** Open
+**Status:** Complete
+**Completed:** 2026-05-31
 **Priority:** High
 **Effort:** Low (< 1 hour)
 **Impact:** Prevents a malicious `.nupkg` file from writing arbitrary files outside the
