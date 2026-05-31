@@ -1,6 +1,7 @@
 # FD-032: Reproduce from a Directory of DLL Files
 
-**Status:** Open
+**Status:** Complete
+**Completed:** 2026-05-31
 **Priority:** Medium
 **Effort:** Medium (1-4 hours)
 **Impact:** Lets users run the reproduce check against a build output directory instead of a
