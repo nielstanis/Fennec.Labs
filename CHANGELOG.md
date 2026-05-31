@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix zip-slip path traversal in `NupkgHelper.ExtractAsync`: validate each archive entry resolves within the extraction root before writing; throw `InvalidOperationException` on traversal attempts from untrusted `.nupkg` files (FD-033)
+
 ### Changed
 
 - Commands now print full help after a missing-argument error: `instrument` and `compare` invoke subcommand help on mutual-exclusion failures; `reproduce`, `feeds add`, and `feeds remove` use `Required = true` for automatic System.CommandLine validation (FD-030)

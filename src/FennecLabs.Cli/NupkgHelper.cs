@@ -7,6 +7,8 @@ internal static class NupkgHelper
 {
     internal static async Task ExtractAsync(string nupkgPath, string extractPath)
     {
+        var canonicalRoot = Path.GetFullPath(extractPath) + Path.DirectorySeparatorChar;
+
         using var fileStream = File.OpenRead(nupkgPath);
         using var archive = new ZipArchive(fileStream, ZipArchiveMode.Read);
 
@@ -15,7 +17,11 @@ internal static class NupkgHelper
             if (string.IsNullOrEmpty(entry.Name))
                 continue;
 
-            var entryPath = Path.Combine(extractPath, entry.FullName);
+            var entryPath = Path.GetFullPath(Path.Combine(extractPath, entry.FullName));
+            if (!entryPath.StartsWith(canonicalRoot, StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    $"Archive entry '{entry.FullName}' resolves outside extraction root.");
+
             var entryDir = Path.GetDirectoryName(entryPath);
             if (!string.IsNullOrEmpty(entryDir))
                 Directory.CreateDirectory(entryDir);
