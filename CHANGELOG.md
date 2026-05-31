@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add `--directory`/`-d` option to `reproduce` command accepting a build output directory instead of a `.nupkg`; add `--tfm`/`-t` for target framework selection with automatic derivation from directory name, single-subdir auto-select, and multi-TFM disambiguation; feed DLLs filtered to `lib/{tfm}/` for accurate matching; `localFile` renamed `localSource` in JSON output (FD-032)
 - Add AGPL-3.0-or-later `LICENSE` file; set `PackageLicenseExpression` in `Fennec.csproj`; all 13 production dependencies audited as MIT/Apache-2.0 compatible; license section and badge added to README (FD-028)
 - Add `README.md` usage section covering all five commands with representative examples, `--json` flag, and `.fennec/` output cache convention; add `SECURITY.md` with vulnerability reporting process; add Contributing section linking to `CONTRIBUTING.md` (FD-026)
 - Add `.github/` with 6 SHA-pinned, zizmor-clean workflows: CI build with TRX test results and Cobertura coverage summary, CodeQL SAST (weekly + on push), zizmor workflow scan, dependency-review license/CVE gate, manual prerelease pipeline (build → attest → feedz.io), and tag-triggered release pipeline (build → attest → nuget.org via trusted publishing); dependabot daily updates with 7-day cooldown; CODEOWNERS (FD-025)
