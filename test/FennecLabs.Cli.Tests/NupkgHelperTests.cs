@@ -86,6 +86,32 @@ public class NupkgHelperTests
         finally { Directory.Delete(tempDir, recursive: true); }
     }
 
+    [Fact]
+    public async Task ExtractAsync_ThrowsOnPathTraversalEntry()
+    {
+        var tempDir = CreateTempDir();
+        try
+        {
+            var nupkgPath = Path.Combine(tempDir, "malicious.nupkg");
+            var extractDir = Path.Combine(tempDir, "extracted");
+            Directory.CreateDirectory(extractDir);
+
+            // Entry traverses one level above extractDir into tempDir
+            using (var zip = ZipFile.Open(nupkgPath, ZipArchiveMode.Create))
+            {
+                using var stream = zip.CreateEntry("../evil.txt").Open();
+                stream.Write("pwned"u8);
+            }
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => NupkgHelper.ExtractAsync(nupkgPath, extractDir));
+
+            Assert.Contains("resolves outside extraction root", ex.Message);
+            Assert.False(File.Exists(Path.Combine(tempDir, "evil.txt")));
+        }
+        finally { Directory.Delete(tempDir, recursive: true); }
+    }
+
     private static string CreateTempDir()
     {
         var dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
