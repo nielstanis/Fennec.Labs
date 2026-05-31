@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FennecLabs.AssemblyDiff;
 using FennecLabs.Cli.Rendering;
 using FennecLabs.NuGet;
@@ -11,12 +12,24 @@ internal class ReproduceCommandHandler
 {
     private readonly NuGetService _nugetService;
 
+    private static readonly Regex TfmPattern =
+        new(@"^net[\w.-]+$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
     public ReproduceCommandHandler(NuGetService nugetService)
     {
         _nugetService = nugetService;
     }
 
     public async Task<int> ExecuteAsync(
+        string? nupkgFilePath, string? directoryPath, string? tfm,
+        string packageId, string? version, OutputMode outputMode, string output, bool noCache)
+    {
+        return directoryPath != null
+            ? await ExecuteDirectoryAsync(directoryPath, tfm, packageId, version, outputMode)
+            : await ExecuteFileAsync(nupkgFilePath!, packageId, version, outputMode, output, noCache);
+    }
+
+    private async Task<int> ExecuteFileAsync(
         string nupkgFilePath, string packageId, string? version, OutputMode outputMode,
         string output, bool noCache)
     {
@@ -101,59 +114,15 @@ internal class ReproduceCommandHandler
                 return 0;
             }
 
-            var dllResults = new List<DllDiffResult>();
-            int identicalCount = 0;
-            int differentCount = 0;
-            int errorCount = 0;
-
-            foreach (var dllPath in matchingDlls)
-            {
-                try
-                {
-                    using var assembly1 = AssemblyDefinition.ReadAssembly(localDlls[dllPath].FullPath);
-                    using var assembly2 = AssemblyDefinition.ReadAssembly(feedDlls[dllPath].FullPath);
-                    var result = new AssemblyComparer(assembly1, assembly2).Compare();
-
-                    dllResults.Add(new DllDiffResult(dllPath, result, null));
-                    if (result.AreEqual) identicalCount++;
-                    else differentCount++;
-                }
-                catch (Exception ex)
-                {
-                    dllResults.Add(new DllDiffResult(dllPath, null, ex.Message));
-                    errorCount++;
-                }
-            }
+            var (dllResults, identicalCount, differentCount, errorCount) =
+                CompareMatchedDlls(matchingDlls, localDlls, feedDlls);
 
             var reproduceResult = new
             {
                 packageId,
-                localFile = nupkgFilePath,
+                localSource = nupkgFilePath,
                 feedVersion = version ?? "latest",
-                perDll = dllResults.Select(d => new
-                {
-                    dllPath = d.DllPath,
-                    areEqual = d.Result?.AreEqual,
-                    events = d.Result?.Events.Select(e => new
-                    {
-                        type = e.GetType().Name,
-                        message = e.FormatMessage(),
-                    }),
-                    typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
-                    typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
-                    methodBodyChanges = d.Result?.MethodBodyChanges.Select(m => new
-                    {
-                        typeName = m.TypeName,
-                        signature = m.Signature,
-                        instructionDiffs = m.Changes.Select(c => new
-                        {
-                            c.Index, c.Instruction1, c.Instruction2,
-                        }),
-                        instructions1 = m.Instructions1,
-                        instructions2 = m.Instructions2,
-                    }),
-                    error = d.Error,
-                }),
+                perDll = dllResults.Select(FormatDllResult),
                 onlyInLocal,
                 onlyInFeed,
                 summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
@@ -194,6 +163,203 @@ internal class ReproduceCommandHandler
         }
     }
 
+    private async Task<int> ExecuteDirectoryAsync(
+        string directoryPath, string? tfm, string packageId, string? version, OutputMode outputMode)
+    {
+        if (!Directory.Exists(directoryPath))
+        {
+            Console.Error.WriteLine($"Directory not found: {directoryPath}");
+            return 1;
+        }
+
+        var (resolvedDir, resolvedTfm, tfmError) = ResolveTfmDirectory(directoryPath, tfm);
+        if (tfmError != null)
+        {
+            Console.Error.WriteLine(tfmError);
+            return 1;
+        }
+
+        if (resolvedTfm == null && outputMode == OutputMode.Human)
+            AnsiConsole.MarkupLine("[yellow]Warning: TFM could not be determined; DLL matching may be imprecise.[/]");
+
+        var rawLocalDlls = NupkgHelper.GetDlls(resolvedDir);
+        var localByName = new Dictionary<string, PackageFileInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kv in rawLocalDlls)
+            localByName[Path.GetFileName(kv.Key)] = kv.Value;
+
+        List<PackageFileInfo> allFeedContents;
+        if (outputMode == OutputMode.Human)
+        {
+            allFeedContents = [];
+            await AnsiConsole.Status()
+                .Spinner(Spinner.Known.Dots)
+                .SpinnerStyle(Style.Parse("grey"))
+                .StartAsync($"Downloading {packageId} {version ?? "latest"} from feed…", async _ =>
+                {
+                    allFeedContents = (await _nugetService.GetPackageContentsAsync(packageId, version))
+                        .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                                    && !f.Path.Contains("_._"))
+                        .ToList();
+                });
+        }
+        else
+        {
+            allFeedContents = (await _nugetService.GetPackageContentsAsync(packageId, version))
+                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+                            && !f.Path.Contains("_._"))
+                .ToList();
+        }
+
+        var feedByName = BuildFeedByName(allFeedContents, resolvedTfm);
+
+        var matchingNames = localByName.Keys
+            .Intersect(feedByName.Keys, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var onlyInLocal = localByName.Keys
+            .Except(feedByName.Keys, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var onlyInFeed = feedByName.Keys
+            .Except(localByName.Keys, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (matchingNames.Count == 0)
+        {
+            Console.Error.WriteLine("No matching DLL files found to compare.");
+            return 0;
+        }
+
+        var (dllResults, identicalCount, differentCount, errorCount) =
+            CompareMatchedDlls(matchingNames, localByName, feedByName);
+
+        var reproduceResult = new
+        {
+            packageId,
+            localSource = resolvedDir,
+            feedVersion = version ?? "latest",
+            perDll = dllResults.Select(FormatDllResult),
+            onlyInLocal,
+            onlyInFeed,
+            summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
+        };
+        var json = JsonSerializer.Serialize(reproduceResult, Json.Options);
+
+        if (outputMode == OutputMode.Json)
+        {
+            Console.WriteLine(json);
+            return errorCount > 0 ? 1 : 0;
+        }
+
+        DiffRenderer.Render(
+            $"{resolvedDir} vs {packageId} {version ?? "latest"}",
+            dllResults,
+            onlyInLocal,
+            onlyInFeed,
+            "local",
+            "feed");
+
+        return errorCount > 0 ? 1 : 0;
+    }
+
+    private static (string resolvedDir, string? resolvedTfm, string? error) ResolveTfmDirectory(
+        string directoryPath, string? tfmHint)
+    {
+        if (!string.IsNullOrWhiteSpace(tfmHint))
+            return (directoryPath, tfmHint, null);
+
+        var dirName = Path.GetFileName(
+            directoryPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        if (TfmPattern.IsMatch(dirName))
+            return (directoryPath, dirName, null);
+
+        var tfmSubdirs = Directory.GetDirectories(directoryPath)
+            .Where(d => TfmPattern.IsMatch(Path.GetFileName(d)))
+            .OrderBy(d => d)
+            .ToList();
+
+        if (tfmSubdirs.Count == 1)
+        {
+            var sub = tfmSubdirs[0];
+            return (sub, Path.GetFileName(sub), null);
+        }
+
+        if (tfmSubdirs.Count > 1)
+        {
+            var names = string.Join(", ", tfmSubdirs.Select(Path.GetFileName));
+            return (directoryPath, null,
+                $"Multiple target frameworks found: {names}. Use --tfm to select one.");
+        }
+
+        return (directoryPath, null, null);
+    }
+
+    private static Dictionary<string, PackageFileInfo> BuildFeedByName(
+        IEnumerable<PackageFileInfo> allFeedDlls, string? tfm)
+    {
+        var source = tfm != null
+            ? allFeedDlls.Where(f => f.Path.StartsWith($"lib/{tfm}/", StringComparison.OrdinalIgnoreCase))
+            : allFeedDlls;
+
+        var result = new Dictionary<string, PackageFileInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var f in source)
+            result[Path.GetFileName(f.Path)] = f;
+        return result;
+    }
+
+    private static (List<DllDiffResult> results, int identical, int different, int errors)
+        CompareMatchedDlls(
+            IEnumerable<string> matchingNames,
+            Dictionary<string, PackageFileInfo> localByKey,
+            Dictionary<string, PackageFileInfo> feedByKey)
+    {
+        var results = new List<DllDiffResult>();
+        int identical = 0, different = 0, errors = 0;
+
+        foreach (var name in matchingNames)
+        {
+            try
+            {
+                using var local = AssemblyDefinition.ReadAssembly(localByKey[name].FullPath);
+                using var feed = AssemblyDefinition.ReadAssembly(feedByKey[name].FullPath);
+                var result = new AssemblyComparer(local, feed).Compare();
+                results.Add(new DllDiffResult(name, result, null));
+                if (result.AreEqual) identical++;
+                else different++;
+            }
+            catch (Exception ex)
+            {
+                results.Add(new DllDiffResult(name, null, ex.Message));
+                errors++;
+            }
+        }
+
+        return (results, identical, different, errors);
+    }
+
+    private static object FormatDllResult(DllDiffResult d) => new
+    {
+        dllPath = d.DllPath,
+        areEqual = d.Result?.AreEqual,
+        events = d.Result?.Events.Select(e => new
+        {
+            type = e.GetType().Name,
+            message = e.FormatMessage(),
+        }),
+        typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
+        typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
+        methodBodyChanges = d.Result?.MethodBodyChanges.Select(m => new
+        {
+            typeName = m.TypeName,
+            signature = m.Signature,
+            instructionDiffs = m.Changes.Select(c => new
+            {
+                c.Index, c.Instruction1, c.Instruction2,
+            }),
+            instructions1 = m.Instructions1,
+            instructions2 = m.Instructions2,
+        }),
+        error = d.Error,
+    };
+
     private static void RenderCachedResult(string json, string cachePath)
     {
         AnsiConsole.MarkupLine($"[dim](cached)[/] {Markup.Escape(cachePath)}");
@@ -213,5 +379,4 @@ internal class ReproduceCommandHandler
         catch (System.Text.Json.JsonException) { }
         AnsiConsole.MarkupLine("[dim]Use --no-cache to force a fresh run.[/]");
     }
-
 }

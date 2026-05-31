@@ -8,6 +8,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
+| [FD-032](FD-032_REPRODUCE_FROM_DIRECTORY.md) | Reproduce from a directory of DLL files | Open | Medium | Medium |
 | [FD-031](FD-031_SHORT_AND_LONG_OPTION_ALIASES.md) | Every option gets both -x and --word aliases, no clashes | Pending Verification | Low | Low |
 | [FD-030](FD-030_SHOW_HELP_ON_MISSING_ARGS.md) | Show full help when required arguments are missing | Pending Verification | Low | Medium |
 | [FD-029](FD-029_SURFACE_DOTNET_LIST_ERROR.md) | Surface dotnet list package stderr errors in scorecard command | Open | Low | Medium |
