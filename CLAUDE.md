@@ -1,6 +1,58 @@
 # FennecLabs
 
-C# .NET CLI tool for analyzing .NET projects — assembly diffing, NuGet inspection, instrumentation, scorecard checks, and dotnet CLI wrapping.
+`Fennec.Labs` is a .NET 10 global CLI tool (command: `fennec`) for analysing .NET projects — assembly diffing, NuGet inspection, IL instrumentation, OpenSSF Scorecard checks, and NuGet feed management.
+
+---
+
+## Application
+
+### Project layout
+
+```
+src/
+  FennecLabs.Cli/             # CLI entry point; published as Fennec.Labs dotnet tool
+  FennecLabs.AssemblyDiff/    # Mono.Cecil-based assembly comparison engine
+  FennecLabs.Instrumentation/ # IL method invocation extractor
+  FennecLabs.NuGet/           # NuGet feed management and package download
+  FennecLabs.Scorecard/       # OpenSSF Scorecard HTTP client
+  FennecLabs.DotNetCli/       # dotnet CLI wrapper
+
+test/
+  FennecLabs.*.Tests/         # One test project per src library
+  FennecLabs.TestUtilities/   # Shared helpers and TestProjectRefs.targets
+  TestProjects/               # Real .csproj fixtures used by integration tests
+```
+
+No `.sln` file — reference individual projects with `-p`.
+
+### Commands
+
+| Command | What it does |
+|---------|-------------|
+| `fennec instrument` | Extract IL method invocations from a local `.dll` or NuGet package |
+| `fennec compare` | Diff assemblies between two NuGet versions or two local `.dll`/`.nupkg` files |
+| `fennec reproduce` | Compare a local `.nupkg` or build output directory against the published NuGet feed version |
+| `fennec scorecard` | Fetch OpenSSF Scorecard for all deps in a `.csproj` (direct + transitive) |
+| `fennec feeds` | Manage NuGet feed sources (`list` / `add` / `remove`) |
+
+Global options on every command: `--json`/`-j`, `--output`/`-o` (default `.fennec`), `--no-cache`/`-C`.
+
+### Build and test
+
+```bash
+dotnet build                                          # build everything
+dotnet test                                           # run all tests
+dotnet test test/FennecLabs.Cli.Tests/               # single project
+dotnet run --project src/FennecLabs.Cli -- <args>    # run from source
+```
+
+### Conventions
+
+- Output files land under `.fennec/` (gitignored); subfolders per command (`instrument/`, `scorecard/`, etc.)
+- Results are cached by package + version; `--no-cache` bypasses the cache
+- `InternalsVisibleTo("FennecLabs.Cli.Tests")` is set on `Fennec.csproj` — internal members are directly testable
+- Live/network tests are tagged `Category=Live`; exclude from offline runs with `--filter "Category!=Live"`
+- `reproduce --directory` supports TFM auto-derivation from directory name, single-subdir auto-select, and interactive `SelectionPrompt` when multiple TFM subdirs are found
 
 ---
 
