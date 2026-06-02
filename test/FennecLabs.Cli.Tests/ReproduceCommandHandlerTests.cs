@@ -1,4 +1,3 @@
-using System.IO;
 using FennecLabs.Cli.Commands;
 
 namespace FennecLabs.Cli.Tests;
