@@ -498,6 +498,9 @@ $RECYCLE.BIN/
 # fennec labs output folder
 .fennec/
 
+# agentic-security tool state
+.agentic-security/
+
 # Code coverage outputs
 TestResults/
 coverage-report/

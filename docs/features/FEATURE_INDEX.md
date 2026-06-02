@@ -16,6 +16,7 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-034](archive/FD-034_SMART_TFM_RESOLUTION.md) | Smart TFM Resolution — Interactive Selection and Strict No-TFM Error | 2026-06-02 | Interactive `SelectionPrompt` for multi-TFM dirs; hard error when TFM unidentifiable; `resolvedTfm` in JSON output; 9 new tests |
 | [FD-033](archive/FD-033_FIX_ZIPSLIP_NUPKG_EXTRACTION.md) | Fix zip-slip path traversal in NupkgHelper.ExtractAsync | 2026-05-31 | `Path.GetFullPath` containment check before `File.Create`; throws `InvalidOperationException` on traversal |
 | [FD-032](archive/FD-032_REPRODUCE_FROM_DIRECTORY.md) | Reproduce from a directory of DLL files | 2026-05-31 | `--directory`/`-d` accepts build output dir; `--tfm`/`-t` with auto-derivation from dir name; TFM-filtered feed matching; `localFile` renamed `localSource` |
 | [FD-031](archive/FD-031_SHORT_AND_LONG_OPTION_ALIASES.md) | Every option gets both -x and --word aliases, no clashes | 2026-05-28 | Add `-C`, `-r`, `-f`, `-d` short aliases; all effective alias sets clash-free |

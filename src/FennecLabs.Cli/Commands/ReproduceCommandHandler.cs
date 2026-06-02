@@ -172,15 +172,13 @@ internal class ReproduceCommandHandler
             return 1;
         }
 
-        var (resolvedDir, resolvedTfm, tfmError) = ResolveTfmDirectory(directoryPath, tfm);
+        var isInteractive = outputMode == OutputMode.Human && AnsiConsole.Profile.Capabilities.Interactive;
+        var (resolvedDir, resolvedTfm, tfmError) = ResolveTfmDirectory(directoryPath, tfm, isInteractive);
         if (tfmError != null)
         {
             Console.Error.WriteLine(tfmError);
             return 1;
         }
-
-        if (resolvedTfm == null && outputMode == OutputMode.Human)
-            AnsiConsole.MarkupLine("[yellow]Warning: TFM could not be determined; DLL matching may be imprecise.[/]");
 
         var rawLocalDlls = NupkgHelper.GetDlls(resolvedDir);
         var localByName = new Dictionary<string, PackageFileInfo>(StringComparer.OrdinalIgnoreCase);
@@ -235,6 +233,7 @@ internal class ReproduceCommandHandler
         {
             packageId,
             localSource = resolvedDir,
+            resolvedTfm,
             feedVersion = version ?? "latest",
             perDll = dllResults.Select(FormatDllResult),
             onlyInLocal,
@@ -260,8 +259,8 @@ internal class ReproduceCommandHandler
         return errorCount > 0 ? 1 : 0;
     }
 
-    private static (string resolvedDir, string? resolvedTfm, string? error) ResolveTfmDirectory(
-        string directoryPath, string? tfmHint)
+    internal static (string resolvedDir, string? resolvedTfm, string? error) ResolveTfmDirectory(
+        string directoryPath, string? tfmHint, bool isInteractive)
     {
         if (!string.IsNullOrWhiteSpace(tfmHint))
             return (directoryPath, tfmHint, null);
@@ -284,12 +283,25 @@ internal class ReproduceCommandHandler
 
         if (tfmSubdirs.Count > 1)
         {
-            var names = string.Join(", ", tfmSubdirs.Select(Path.GetFileName));
+            var names = tfmSubdirs.Select(d => Path.GetFileName(d)!).ToList();
+            if (isInteractive)
+            {
+                var selected = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("Select a target framework:")
+                        .AddChoices(names));
+                var selectedDir = tfmSubdirs.First(d =>
+                    string.Equals(Path.GetFileName(d), selected, StringComparison.OrdinalIgnoreCase));
+                return (selectedDir, selected, null);
+            }
+
             return (directoryPath, null,
-                $"Multiple target frameworks found: {names}. Use --tfm to select one.");
+                $"Multiple target frameworks found: {string.Join(", ", names)}. Use --tfm to select one.");
         }
 
-        return (directoryPath, null, null);
+        return (directoryPath, null,
+            $"Cannot determine target framework from directory '{directoryPath}'. " +
+            "Use --tfm (e.g. --tfm net8.0) to specify one.");
     }
 
     private static Dictionary<string, PackageFileInfo> BuildFeedByName(
