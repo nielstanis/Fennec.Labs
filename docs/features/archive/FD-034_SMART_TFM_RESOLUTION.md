@@ -1,6 +1,7 @@
 # FD-034: Smart TFM Resolution — Interactive Selection and Strict No-TFM Error
 
-**Status:** In Progress
+**Status:** Complete
+**Completed:** 2026-06-02
 **Priority:** Medium
 **Effort:** Low (< 1 hour)
 **Impact:** Removes friction when pointing at a multi-TFM build output dir; eliminates silent
