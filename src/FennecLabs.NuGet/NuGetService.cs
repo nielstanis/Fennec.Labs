@@ -323,7 +323,7 @@ public class NuGetService
         }
     }
 
-    private static void SavePackageToGlobalFolder(ZipArchive archive, string packagePath)
+    internal static void SavePackageToGlobalFolder(ZipArchive archive, string packagePath)
     {
         var fullPackagePath = Path.GetFullPath(packagePath + Path.DirectorySeparatorChar);
 
@@ -333,9 +333,10 @@ public class NuGetService
                 continue;
 
             var entryPath = Path.GetFullPath(Path.Combine(packagePath, entry.FullName));
-            if (!entryPath.StartsWith(fullPackagePath, StringComparison.OrdinalIgnoreCase))
+            if (!entryPath.StartsWith(fullPackagePath, StringComparison.Ordinal))
             {
-                throw new InvalidOperationException($"Entry is outside the target dir: {entry.FullName}");
+                throw new InvalidOperationException(
+                    $"Archive entry '{entry.FullName}' resolves outside extraction root.");
             }
 
             var entryDirectory = Path.GetDirectoryName(entryPath);
