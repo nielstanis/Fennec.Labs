@@ -325,12 +325,19 @@ public class NuGetService
 
     private static void SavePackageToGlobalFolder(ZipArchive archive, string packagePath)
     {
+        var fullPackagePath = Path.GetFullPath(packagePath + Path.DirectorySeparatorChar);
+
         foreach (var entry in archive.Entries)
         {
             if (string.IsNullOrEmpty(entry.Name))
                 continue;
 
-            var entryPath = Path.Combine(packagePath, entry.FullName);
+            var entryPath = Path.GetFullPath(Path.Combine(packagePath, entry.FullName));
+            if (!entryPath.StartsWith(fullPackagePath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException($"Entry is outside the target dir: {entry.FullName}");
+            }
+
             var entryDirectory = Path.GetDirectoryName(entryPath);
 
             if (!string.IsNullOrEmpty(entryDirectory))
