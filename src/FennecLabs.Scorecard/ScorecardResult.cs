@@ -1,12 +1,11 @@
 namespace FennecLabs.Scorecard;
 
-public class ScorecardResult
+public record ScorecardResult
 {
-    public required string Date { get; set; }
-    public required Repo Repo { get; set; }
-    public required ScorecardVersion Scorecard { get; set; }
-    public decimal Score { get; set; }
-    public required List<ScorecardCheck> Checks { get; set; }
-    public string? Metadata { get; set; }
+    public required string Date { get; init; }
+    public required Repo Repo { get; init; }
+    public required ScorecardVersion Scorecard { get; init; }
+    public decimal Score { get; init; }
+    public required List<ScorecardCheck> Checks { get; init; }
+    public string? Metadata { get; init; }
 }
-

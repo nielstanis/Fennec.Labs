@@ -1,8 +1,7 @@
 namespace FennecLabs.Scorecard;
 
-public class Repo
+public record Repo
 {
-    public required string Name { get; set; }
-    public string? Commit { get; set; }
+    public required string Name { get; init; }
+    public string? Commit { get; init; }
 }
-
