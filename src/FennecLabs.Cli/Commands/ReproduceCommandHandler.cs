@@ -1,9 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using FennecLabs.AssemblyDiff;
 using FennecLabs.Cli.Rendering;
 using FennecLabs.NuGet;
-using Mono.Cecil;
 using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
@@ -54,7 +52,7 @@ internal class ReproduceCommandHandler
                 if (outputMode == OutputMode.Json)
                     Console.WriteLine(cached);
                 else
-                    RenderCachedResult(cached, cachePath);
+                    DllPipeline.RenderCachedResult(cached, cachePath);
                 return 0;
             }
         }
@@ -66,42 +64,18 @@ internal class ReproduceCommandHandler
             tempExtractPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempExtractPath);
 
-            if (outputMode == OutputMode.Human)
-            {
-                await AnsiConsole.Status()
-                    .Spinner(Spinner.Known.Dots)
-                    .SpinnerStyle(Style.Parse("grey"))
-                    .StartAsync($"Extracting {Path.GetFileName(nupkgFilePath)}…", async _ =>
-                    {
-                        await NupkgHelper.ExtractAsync(nupkgFilePath, tempExtractPath);
-                    });
-            }
-            else
-            {
-                await NupkgHelper.ExtractAsync(nupkgFilePath, tempExtractPath);
-            }
+            await StatusRunner.RunAsync(
+                outputMode, $"Extracting {Path.GetFileName(nupkgFilePath)}…",
+                () => NupkgHelper.ExtractAsync(nupkgFilePath, tempExtractPath));
 
             var localDlls = NupkgHelper.GetDlls(tempExtractPath);
 
-            string feedPackagePath = string.Empty;
-            if (outputMode == OutputMode.Human)
-            {
-                await AnsiConsole.Status()
-                    .Spinner(Spinner.Known.Dots)
-                    .SpinnerStyle(Style.Parse("grey"))
-                    .StartAsync($"Downloading {packageId} {version ?? "latest"} from feed…", async _ =>
-                    {
-                        feedPackagePath = await _nugetService.DownloadPackageAsync(packageId, version);
-                    });
-            }
-            else
-            {
-                feedPackagePath = await _nugetService.DownloadPackageAsync(packageId, version);
-            }
+            await StatusRunner.RunAsync(
+                outputMode, $"Downloading {packageId} {version ?? "latest"} from feed…",
+                () => _nugetService.DownloadPackageAsync(packageId, version));
 
             var feedDlls = (await _nugetService.GetPackageContentsAsync(packageId, version))
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                    && !f.Path.Contains("_._"))
+                .Where(DllPipeline.IsLibraryDll)
                 .ToDictionary(f => f.Path, f => f);
 
             var matchingDlls = localDlls.Keys.Intersect(feedDlls.Keys).ToList();
@@ -115,14 +89,14 @@ internal class ReproduceCommandHandler
             }
 
             var (dllResults, identicalCount, differentCount, errorCount) =
-                CompareMatchedDlls(matchingDlls, localDlls, feedDlls);
+                DllPipeline.CompareMatchedDlls(matchingDlls, localDlls, feedDlls);
 
             var reproduceResult = new
             {
                 packageId,
                 localSource = nupkgFilePath,
                 feedVersion = version ?? "latest",
-                perDll = dllResults.Select(FormatDllResult),
+                perDll = dllResults.Select(DllPipeline.FormatDllResult),
                 onlyInLocal,
                 onlyInFeed,
                 summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
@@ -185,28 +159,12 @@ internal class ReproduceCommandHandler
         foreach (var kv in rawLocalDlls)
             localByName[Path.GetFileName(kv.Key)] = kv.Value;
 
-        List<PackageFileInfo> allFeedContents;
-        if (outputMode == OutputMode.Human)
-        {
-            allFeedContents = [];
-            await AnsiConsole.Status()
-                .Spinner(Spinner.Known.Dots)
-                .SpinnerStyle(Style.Parse("grey"))
-                .StartAsync($"Downloading {packageId} {version ?? "latest"} from feed…", async _ =>
-                {
-                    allFeedContents = (await _nugetService.GetPackageContentsAsync(packageId, version))
-                        .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                                    && !f.Path.Contains("_._"))
-                        .ToList();
-                });
-        }
-        else
-        {
-            allFeedContents = (await _nugetService.GetPackageContentsAsync(packageId, version))
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                            && !f.Path.Contains("_._"))
-                .ToList();
-        }
+        var allFeedContents = await StatusRunner.RunAsync(
+            outputMode,
+            $"Downloading {packageId} {version ?? "latest"} from feed…",
+            async () => (await _nugetService.GetPackageContentsAsync(packageId, version))
+                .Where(DllPipeline.IsLibraryDll)
+                .ToList());
 
         var feedByName = BuildFeedByName(allFeedContents, resolvedTfm);
 
@@ -227,7 +185,7 @@ internal class ReproduceCommandHandler
         }
 
         var (dllResults, identicalCount, differentCount, errorCount) =
-            CompareMatchedDlls(matchingNames, localByName, feedByName);
+            DllPipeline.CompareMatchedDlls(matchingNames, localByName, feedByName);
 
         var reproduceResult = new
         {
@@ -235,7 +193,7 @@ internal class ReproduceCommandHandler
             localSource = resolvedDir,
             resolvedTfm,
             feedVersion = version ?? "latest",
-            perDll = dllResults.Select(FormatDllResult),
+            perDll = dllResults.Select(DllPipeline.FormatDllResult),
             onlyInLocal,
             onlyInFeed,
             summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
@@ -317,78 +275,4 @@ internal class ReproduceCommandHandler
         return result;
     }
 
-    private static (List<DllDiffResult> results, int identical, int different, int errors)
-        CompareMatchedDlls(
-            IEnumerable<string> matchingNames,
-            Dictionary<string, PackageFileInfo> localByKey,
-            Dictionary<string, PackageFileInfo> feedByKey)
-    {
-        var results = new List<DllDiffResult>();
-        int identical = 0, different = 0, errors = 0;
-
-        foreach (var name in matchingNames)
-        {
-            try
-            {
-                using var local = AssemblyDefinition.ReadAssembly(localByKey[name].FullPath);
-                using var feed = AssemblyDefinition.ReadAssembly(feedByKey[name].FullPath);
-                var result = new AssemblyComparer(local, feed).Compare();
-                results.Add(new DllDiffResult(name, result, null));
-                if (result.AreEqual) identical++;
-                else different++;
-            }
-            catch (Exception ex)
-            {
-                results.Add(new DllDiffResult(name, null, ex.Message));
-                errors++;
-            }
-        }
-
-        return (results, identical, different, errors);
-    }
-
-    private static object FormatDllResult(DllDiffResult d) => new
-    {
-        dllPath = d.DllPath,
-        areEqual = d.Result?.AreEqual,
-        events = d.Result?.Events.Select(e => new
-        {
-            type = e.GetType().Name,
-            message = e.FormatMessage(),
-        }),
-        typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
-        typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
-        methodBodyChanges = d.Result?.MethodBodyChanges.Select(m => new
-        {
-            typeName = m.TypeName,
-            signature = m.Signature,
-            instructionDiffs = m.Changes.Select(c => new
-            {
-                c.Index, c.Instruction1, c.Instruction2,
-            }),
-            instructions1 = m.Instructions1,
-            instructions2 = m.Instructions2,
-        }),
-        error = d.Error,
-    };
-
-    private static void RenderCachedResult(string json, string cachePath)
-    {
-        AnsiConsole.MarkupLine($"[dim](cached)[/] {Markup.Escape(cachePath)}");
-        try
-        {
-            using var doc = System.Text.Json.JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("summary", out var summary))
-            {
-                var identical = summary.GetProperty("identical").GetInt32();
-                var different = summary.GetProperty("different").GetInt32();
-                var errors = summary.GetProperty("errors").GetInt32();
-                AnsiConsole.MarkupLine(
-                    $"[dim]Summary: [green]{identical} identical[/] · " +
-                    $"[red]{different} different[/] · [red]{errors} error(s)[/][/]");
-            }
-        }
-        catch (System.Text.Json.JsonException) { }
-        AnsiConsole.MarkupLine("[dim]Use --no-cache to force a fresh run.[/]");
-    }
 }

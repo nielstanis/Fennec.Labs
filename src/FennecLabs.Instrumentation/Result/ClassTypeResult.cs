@@ -1,9 +1,6 @@
-namespace FennecLabs.Instrumentation.Result
-{
-    public class ClassTypeResult(string classtype)
-    {
-        public List<MethodResult> Methods { get; } = [];
-        public string ClassType { get; } = classtype;
-    }
-}
+namespace FennecLabs.Instrumentation.Result;
 
+public record ClassTypeResult(string ClassType)
+{
+    public List<MethodResult> Methods { get; } = [];
+}

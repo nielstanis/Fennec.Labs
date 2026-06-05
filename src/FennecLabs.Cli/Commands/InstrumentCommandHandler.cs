@@ -68,27 +68,12 @@ internal class InstrumentCommandHandler
     {
         try
         {
-            string packagePath = string.Empty;
-            if (outputMode == OutputMode.Human)
-            {
-                await AnsiConsole.Status()
-                    .Spinner(Spinner.Known.Dots)
-                    .SpinnerStyle(Style.Parse("grey"))
-                    .StartAsync($"Downloading {packageId} {version ?? "latest"}…", async _ =>
-                    {
-                        packagePath = await _nugetService.DownloadPackageAsync(packageId, version);
-                    });
-            }
-            else
-            {
-                packagePath = await _nugetService.DownloadPackageAsync(packageId, version);
-            }
+            var packagePath = await StatusRunner.RunAsync(
+                outputMode, $"Downloading {packageId} {version ?? "latest"}…",
+                () => _nugetService.DownloadPackageAsync(packageId, version));
 
             var contents = await _nugetService.GetPackageContentsAsync(packageId, version);
-            var dllFiles = contents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                    && !f.Path.Contains("_._"))
-                .ToList();
+            var dllFiles = contents.Where(DllPipeline.IsLibraryDll).ToList();
 
             if (dllFiles.Count == 0)
             {

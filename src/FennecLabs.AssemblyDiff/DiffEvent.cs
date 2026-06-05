@@ -4,6 +4,12 @@ namespace FennecLabs.AssemblyDiff;
 
 public enum DiffKind { Added, Removed }
 
+public enum DiffFlag
+{
+    IsPublic, IsAbstract, IsSealed, IsInterface,
+    Visibility, IsVirtual, IsStatic,
+}
+
 public abstract record DiffEvent
 {
     public abstract string FormatMessage();
@@ -55,11 +61,11 @@ public record TypePresenceDiff(string TypeName, DiffKind Kind, string? Declaring
             : $"Type only in Assembly2: {TypeName}";
 }
 
-public record TypeFlagDiff(string TypeName, string Flag, bool Was, bool Is) : DiffEvent
+public record TypeFlagDiff(string TypeName, DiffFlag Flag, bool Was, bool Is) : DiffEvent
 {
     public override string FormatMessage() => Flag switch
     {
-        "IsPublic" => $"Type '{TypeName}': Visibility differs (IsPublic: {Was} vs {Is})",
+        DiffFlag.IsPublic => $"Type '{TypeName}': Visibility differs (IsPublic: {Was} vs {Is})",
         _ => $"Type '{TypeName}': {Flag} differs ({Was} vs {Is})"
     };
 }
@@ -95,7 +101,7 @@ public record MethodPresenceDiff(string TypeName, string Signature, DiffKind Kin
             : $"Type '{TypeName}': Method only in Assembly2: {Signature}";
 }
 
-public record MethodFlagDiff(string TypeName, string Signature, string Flag) : DiffEvent
+public record MethodFlagDiff(string TypeName, string Signature, DiffFlag Flag) : DiffEvent
 {
     public override string FormatMessage() =>
         $"Type '{TypeName}', Method '{Signature}': {Flag} differs";
@@ -182,7 +188,7 @@ public record FieldTypeDiff(string TypeName, string FieldName, string Was, strin
         $"Type '{TypeName}', Field '{FieldName}': Type differs ('{Was}' vs '{Is}')";
 }
 
-public record FieldFlagDiff(string TypeName, string FieldName, string Flag) : DiffEvent
+public record FieldFlagDiff(string TypeName, string FieldName, DiffFlag Flag) : DiffEvent
 {
     public override string FormatMessage() =>
         $"Type '{TypeName}', Field '{FieldName}': {Flag} differs";

@@ -1,10 +1,7 @@
 using System.Text.Json;
-using FennecLabs.AssemblyDiff;
 using FennecLabs.Cli.Rendering;
 using FennecLabs.NuGet;
-using Mono.Cecil;
 using NuGet.Versioning;
-using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
 
@@ -75,32 +72,23 @@ internal class CompareCommandHandler
                 if (outputMode == OutputMode.Json)
                     Console.WriteLine(cached);
                 else
-                    RenderCachedResult(cached, cachePath);
+                    DllPipeline.RenderCachedResult(cached, cachePath);
                 return 0;
             }
 
-            string currentPackagePath = await DownloadWithStatus(
-                packageId, currentVersionStr,
-                $"Downloading {packageId} {currentVersionStr}…",
-                outputMode);
+            await StatusRunner.RunAsync(
+                outputMode, $"Downloading {packageId} {currentVersionStr}…",
+                () => _nugetService.DownloadPackageAsync(packageId, currentVersionStr));
 
-            string previousPackagePath = await DownloadWithStatus(
-                packageId, previousVersionStr,
-                $"Downloading {packageId} {previousVersionStr}…",
-                outputMode);
+            await StatusRunner.RunAsync(
+                outputMode, $"Downloading {packageId} {previousVersionStr}…",
+                () => _nugetService.DownloadPackageAsync(packageId, previousVersionStr));
 
             var currentContents = await _nugetService.GetPackageContentsAsync(packageId, currentVersionStr);
             var previousContents = await _nugetService.GetPackageContentsAsync(packageId, previousVersionStr);
 
-            var currentDlls = currentContents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                    && !f.Path.Contains("_._"))
-                .ToDictionary(f => f.Path, f => f);
-
-            var previousDlls = previousContents
-                .Where(f => f.Path.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
-                    && !f.Path.Contains("_._"))
-                .ToDictionary(f => f.Path, f => f);
+            var currentDlls = currentContents.Where(DllPipeline.IsLibraryDll).ToDictionary(f => f.Path, f => f);
+            var previousDlls = previousContents.Where(DllPipeline.IsLibraryDll).ToDictionary(f => f.Path, f => f);
 
             var matchingDlls = currentDlls.Keys.Intersect(previousDlls.Keys).ToList();
             var onlyInCurrent = currentDlls.Keys.Except(previousDlls.Keys).ToList();
@@ -112,59 +100,15 @@ internal class CompareCommandHandler
                 return 0;
             }
 
-            var dllResults = new List<DllDiffResult>();
-            int identicalCount = 0;
-            int differentCount = 0;
-            int errorCount = 0;
-
-            foreach (var dllPath in matchingDlls)
-            {
-                try
-                {
-                    using var assembly1 = AssemblyDefinition.ReadAssembly(previousDlls[dllPath].FullPath);
-                    using var assembly2 = AssemblyDefinition.ReadAssembly(currentDlls[dllPath].FullPath);
-                    var result = new AssemblyComparer(assembly1, assembly2).Compare();
-
-                    dllResults.Add(new DllDiffResult(dllPath, result, null));
-                    if (result.AreEqual) identicalCount++;
-                    else differentCount++;
-                }
-                catch (Exception ex)
-                {
-                    dllResults.Add(new DllDiffResult(dllPath, null, ex.Message));
-                    errorCount++;
-                }
-            }
+            var (dllResults, identicalCount, differentCount, errorCount) =
+                DllPipeline.CompareMatchedDlls(matchingDlls, previousDlls, currentDlls);
 
             var compareResult = new
             {
                 packageId,
                 currentVersion = currentVersionStr,
                 previousVersion = previousVersionStr,
-                perDll = dllResults.Select(d => new
-                {
-                    dllPath = d.DllPath,
-                    areEqual = d.Result?.AreEqual,
-                    events = d.Result?.Events.Select(e => new
-                    {
-                        type = e.GetType().Name,
-                        message = e.FormatMessage(),
-                    }),
-                    typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
-                    typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
-                    methodBodyChanges = d.Result?.MethodBodyChanges.Select(m => new
-                    {
-                        typeName = m.TypeName,
-                        signature = m.Signature,
-                        instructionDiffs = m.Changes.Select(c => new
-                        {
-                            c.Index, c.Instruction1, c.Instruction2,
-                        }),
-                        instructions1 = m.Instructions1,
-                        instructions2 = m.Instructions2,
-                    }),
-                    error = d.Error,
-                }),
+                perDll = dllResults.Select(DllPipeline.FormatDllResult),
                 onlyInCurrent,
                 onlyInPrevious,
                 summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
@@ -195,40 +139,4 @@ internal class CompareCommandHandler
         }
     }
 
-    private static void RenderCachedResult(string json, string cachePath)
-    {
-        AnsiConsole.MarkupLine($"[dim](cached)[/] {Markup.Escape(cachePath)}");
-        try
-        {
-            using var doc = System.Text.Json.JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("summary", out var summary))
-            {
-                var identical = summary.GetProperty("identical").GetInt32();
-                var different = summary.GetProperty("different").GetInt32();
-                var errors = summary.GetProperty("errors").GetInt32();
-                AnsiConsole.MarkupLine(
-                    $"[dim]Summary: [green]{identical} identical[/] · " +
-                    $"[red]{different} different[/] · [red]{errors} error(s)[/][/]");
-            }
-        }
-        catch (System.Text.Json.JsonException) { }
-        AnsiConsole.MarkupLine("[dim]Use --no-cache to force a fresh run.[/]");
-    }
-
-    private async Task<string> DownloadWithStatus(
-        string packageId, string version, string statusMessage, OutputMode outputMode)
-    {
-        if (outputMode == OutputMode.Json)
-            return await _nugetService.DownloadPackageAsync(packageId, version);
-
-        string path = string.Empty;
-        await AnsiConsole.Status()
-            .Spinner(Spinner.Known.Dots)
-            .SpinnerStyle(Style.Parse("grey"))
-            .StartAsync(statusMessage, async _ =>
-            {
-                path = await _nugetService.DownloadPackageAsync(packageId, version);
-            });
-        return path;
-    }
 }

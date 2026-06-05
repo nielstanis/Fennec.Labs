@@ -91,13 +91,13 @@ public class AssemblyComparer
         var typeName = type1.FullName;
 
         if (type1.IsPublic != type2.IsPublic)
-            result.Events.Add(new TypeFlagDiff(typeName, "IsPublic", type1.IsPublic, type2.IsPublic));
+            result.Events.Add(new TypeFlagDiff(typeName, DiffFlag.IsPublic, type1.IsPublic, type2.IsPublic));
         if (type1.IsAbstract != type2.IsAbstract)
-            result.Events.Add(new TypeFlagDiff(typeName, "IsAbstract", type1.IsAbstract, type2.IsAbstract));
+            result.Events.Add(new TypeFlagDiff(typeName, DiffFlag.IsAbstract, type1.IsAbstract, type2.IsAbstract));
         if (type1.IsSealed != type2.IsSealed)
-            result.Events.Add(new TypeFlagDiff(typeName, "IsSealed", type1.IsSealed, type2.IsSealed));
+            result.Events.Add(new TypeFlagDiff(typeName, DiffFlag.IsSealed, type1.IsSealed, type2.IsSealed));
         if (type1.IsInterface != type2.IsInterface)
-            result.Events.Add(new TypeFlagDiff(typeName, "IsInterface", type1.IsInterface, type2.IsInterface));
+            result.Events.Add(new TypeFlagDiff(typeName, DiffFlag.IsInterface, type1.IsInterface, type2.IsInterface));
 
         if (type1.BaseType?.FullName != type2.BaseType?.FullName)
             result.Events.Add(new TypeBaseTypeDiff(typeName, type1.BaseType?.FullName, type2.BaseType?.FullName));
@@ -167,13 +167,13 @@ public class AssemblyComparer
             var method2 = methods2[methodSig];
 
             if (method1.IsPublic != method2.IsPublic)
-                result.Events.Add(new MethodFlagDiff(typeName, methodSig, "Visibility"));
+                result.Events.Add(new MethodFlagDiff(typeName, methodSig, DiffFlag.Visibility));
             if (method1.IsVirtual != method2.IsVirtual)
-                result.Events.Add(new MethodFlagDiff(typeName, methodSig, "IsVirtual"));
+                result.Events.Add(new MethodFlagDiff(typeName, methodSig, DiffFlag.IsVirtual));
             if (method1.IsAbstract != method2.IsAbstract)
-                result.Events.Add(new MethodFlagDiff(typeName, methodSig, "IsAbstract"));
+                result.Events.Add(new MethodFlagDiff(typeName, methodSig, DiffFlag.IsAbstract));
             if (method1.IsStatic != method2.IsStatic)
-                result.Events.Add(new MethodFlagDiff(typeName, methodSig, "IsStatic"));
+                result.Events.Add(new MethodFlagDiff(typeName, methodSig, DiffFlag.IsStatic));
             if (method1.ImplAttributes != method2.ImplAttributes)
                 result.Events.Add(new MethodImplAttrsDiff(typeName, methodSig,
                     method1.ImplAttributes, method2.ImplAttributes));
@@ -360,9 +360,9 @@ public class AssemblyComparer
                 result.Events.Add(new FieldTypeDiff(
                     typeName, fieldName, field1.FieldType.FullName, field2.FieldType.FullName));
             if (field1.IsPublic != field2.IsPublic)
-                result.Events.Add(new FieldFlagDiff(typeName, fieldName, "Visibility"));
+                result.Events.Add(new FieldFlagDiff(typeName, fieldName, DiffFlag.Visibility));
             if (field1.IsStatic != field2.IsStatic)
-                result.Events.Add(new FieldFlagDiff(typeName, fieldName, "IsStatic"));
+                result.Events.Add(new FieldFlagDiff(typeName, fieldName, DiffFlag.IsStatic));
         }
     }
 
