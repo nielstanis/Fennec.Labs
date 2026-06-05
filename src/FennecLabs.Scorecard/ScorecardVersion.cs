@@ -1,8 +1,7 @@
 namespace FennecLabs.Scorecard;
 
-public class ScorecardVersion
+public record ScorecardVersion
 {
-    public required string Version { get; set; }
-    public required string Commit { get; set; }
+    public required string Version { get; init; }
+    public required string Commit { get; init; }
 }
-

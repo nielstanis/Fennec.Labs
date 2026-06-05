@@ -1,9 +1,8 @@
 namespace FennecLabs.NuGet;
 
-public class PackageFileInfo
+public record PackageFileInfo
 {
-    public required string Path { get; set; }
-    public required string FullPath { get; set; }
-    public long Size { get; set; }
+    public required string Path { get; init; }
+    public required string FullPath { get; init; }
+    public long Size { get; init; }
 }
-
