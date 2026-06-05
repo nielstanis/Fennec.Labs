@@ -25,6 +25,38 @@ internal class ScorecardCommandHandler
             AnsiConsole.WriteLine();
         }
 
+        var resolved = await ResolvePackagesAsync(projectPath, outputMode);
+        if (resolved == null)
+            return 0;
+
+        var (framework, allPackages) = resolved.Value;
+        var results = await FetchScorecardsAsync(allPackages, outputMode);
+
+        var generatedAt = DateTime.Now;
+        var json = BuildJsonOutput(projectPath, framework, results, generatedAt);
+
+        var projectName = projectPath != null
+            ? Path.GetFileNameWithoutExtension(projectPath)
+            : "project";
+        var scoreDir = OutputCache.ScorecardDir(output, projectName,
+            generatedAt.ToString("yyyy-MM-dd_HH-mm-ss"));
+        await OutputCache.WriteAsync(Path.Combine(scoreDir, "result.json"), json);
+
+        if (outputMode == OutputMode.Json)
+        {
+            Console.WriteLine(json);
+            return 0;
+        }
+
+        AnsiConsole.WriteLine();
+        ScorecardRenderer.Render(results);
+        await WriteReportsAsync(projectPath, framework, results, generatedAt, reportFormat, scoreDir);
+        return 0;
+    }
+
+    private static async Task<(Framework framework, List<PackageReference> packages)?> ResolvePackagesAsync(
+        string? projectPath, OutputMode outputMode)
+    {
         var packageList = projectPath != null
             ? await DotnetCliExecutor.GetPackageListAsync(projectPath)
             : await DotnetCliExecutor.GetPackageListAsync();
@@ -32,14 +64,14 @@ internal class ScorecardCommandHandler
         if (packageList == null || packageList.Projects.Count == 0)
         {
             EmitEmpty(outputMode);
-            return 0;
+            return null;
         }
 
         var project = packageList.Projects[0];
         if (project.Frameworks.Count == 0)
         {
             EmitEmpty(outputMode);
-            return 0;
+            return null;
         }
 
         var framework = project.Frameworks[0];
@@ -48,7 +80,7 @@ internal class ScorecardCommandHandler
         if (allPackages.Count == 0)
         {
             EmitEmpty(outputMode);
-            return 0;
+            return null;
         }
 
         if (outputMode == OutputMode.Human)
@@ -59,9 +91,14 @@ internal class ScorecardCommandHandler
             AnsiConsole.WriteLine();
         }
 
-        var results = new List<PackageScorecardResult>();
+        return (framework, allPackages);
+    }
 
-        foreach (var package in allPackages)
+    private async Task<List<PackageScorecardResult>> FetchScorecardsAsync(
+        List<PackageReference> packages, OutputMode outputMode)
+    {
+        var results = new List<PackageScorecardResult>();
+        foreach (var package in packages)
         {
             if (outputMode == OutputMode.Human)
                 AnsiConsole.Markup(
@@ -99,9 +136,14 @@ internal class ScorecardCommandHandler
                     Console.Error.WriteLine($"Error fetching {package.Id}: {ex.Message}");
             }
         }
+        return results;
+    }
 
-        var generatedAt = DateTime.Now;
-        var scorecardOutput = new
+    private static string BuildJsonOutput(
+        string? projectPath, Framework framework,
+        List<PackageScorecardResult> results, DateTime generatedAt)
+    {
+        var output = new
         {
             project = projectPath ?? ".",
             framework = framework.FrameworkName,
@@ -138,53 +180,40 @@ internal class ScorecardCommandHandler
                 error = r.Error,
             }),
         };
-        var json = JsonSerializer.Serialize(scorecardOutput, Json.Options);
+        return JsonSerializer.Serialize(output, Json.Options);
+    }
 
-        var projectName = projectPath != null
-            ? Path.GetFileNameWithoutExtension(projectPath)
-            : "project";
-        var timestamp = generatedAt.ToString("yyyy-MM-dd_HH-mm-ss");
-        var scoreDir = OutputCache.ScorecardDir(output, projectName, timestamp);
-        await OutputCache.WriteAsync(Path.Combine(scoreDir, "result.json"), json);
+    private static async Task WriteReportsAsync(
+        string? projectPath, Framework framework,
+        List<PackageScorecardResult> results, DateTime generatedAt,
+        string? reportFormat, string scoreDir)
+    {
+        if (string.IsNullOrEmpty(reportFormat))
+            return;
 
-        if (outputMode == OutputMode.Json)
+        var report = BuildReport(projectPath, framework, results, generatedAt);
+        foreach (var fmt in reportFormat.Split(',', StringSplitOptions.RemoveEmptyEntries))
         {
-            Console.WriteLine(json);
-            return 0;
-        }
-
-        AnsiConsole.WriteLine();
-        ScorecardRenderer.Render(results);
-
-        if (!string.IsNullOrEmpty(reportFormat))
-        {
-            var report = BuildReport(projectPath, framework, results, generatedAt);
-            var formats = reportFormat.Split(',', StringSplitOptions.RemoveEmptyEntries);
-            foreach (var fmt in formats)
+            var normalized = fmt.Trim().ToLowerInvariant();
+            if (normalized == "html")
             {
-                var normalized = fmt.Trim().ToLowerInvariant();
-                if (normalized == "html")
-                {
-                    var path = Path.Combine(scoreDir, "report.html");
-                    await File.WriteAllTextAsync(path, ScorecardReportBuilder.BuildHtml(report));
-                    AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine($"[dim]HTML report:[/] {Markup.Escape(path)}");
-                }
-                else if (normalized == "md")
-                {
-                    var path = Path.Combine(scoreDir, "report.md");
-                    await File.WriteAllTextAsync(path, ScorecardReportBuilder.BuildMarkdown(report));
-                    AnsiConsole.WriteLine();
-                    AnsiConsole.MarkupLine($"[dim]Markdown report:[/] {Markup.Escape(path)}");
-                }
-                else
-                {
-                    Console.Error.WriteLine($"Unknown report format '{fmt}'. Valid values: html, md");
-                }
+                var path = Path.Combine(scoreDir, "report.html");
+                await File.WriteAllTextAsync(path, ScorecardReportBuilder.BuildHtml(report));
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine($"[dim]HTML report:[/] {Markup.Escape(path)}");
+            }
+            else if (normalized == "md")
+            {
+                var path = Path.Combine(scoreDir, "report.md");
+                await File.WriteAllTextAsync(path, ScorecardReportBuilder.BuildMarkdown(report));
+                AnsiConsole.WriteLine();
+                AnsiConsole.MarkupLine($"[dim]Markdown report:[/] {Markup.Escape(path)}");
+            }
+            else
+            {
+                Console.Error.WriteLine($"Unknown report format '{fmt}'. Valid values: html, md");
             }
         }
-
-        return 0;
     }
 
     private static ScorecardReport BuildReport(

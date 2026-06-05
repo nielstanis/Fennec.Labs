@@ -61,9 +61,7 @@ namespace FennecLabs.Instrumentation
             }
             catch (Exception ex)
             {
-                var err = new AssemblyResult("NotAvailable", _assembly);
-                err.HandleException(ex);
-                return err;
+                return new AssemblyResult("NotAvailable", _assembly, ex);
             }
         }
     }

@@ -68,21 +68,21 @@ public class DiffEventFormatMessageTests
     [Fact]
     public void TypeFlagDiff_IsAbstract_UsesDefaultBranch()
     {
-        var diff = new TypeFlagDiff("MyNamespace.MyClass", "IsAbstract", false, true);
+        var diff = new TypeFlagDiff("MyNamespace.MyClass", DiffFlag.IsAbstract, false, true);
         Assert.Equal("Type 'MyNamespace.MyClass': IsAbstract differs (False vs True)", diff.FormatMessage());
     }
 
     [Fact]
     public void TypeFlagDiff_IsSealed_UsesDefaultBranch()
     {
-        var diff = new TypeFlagDiff("MyNamespace.MyClass", "IsSealed", false, true);
+        var diff = new TypeFlagDiff("MyNamespace.MyClass", DiffFlag.IsSealed, false, true);
         Assert.Equal("Type 'MyNamespace.MyClass': IsSealed differs (False vs True)", diff.FormatMessage());
     }
 
     [Fact]
     public void TypeFlagDiff_IsInterface_UsesDefaultBranch()
     {
-        var diff = new TypeFlagDiff("MyNamespace.MyClass", "IsInterface", false, true);
+        var diff = new TypeFlagDiff("MyNamespace.MyClass", DiffFlag.IsInterface, false, true);
         Assert.Equal("Type 'MyNamespace.MyClass': IsInterface differs (False vs True)", diff.FormatMessage());
     }
 
@@ -91,7 +91,7 @@ public class DiffEventFormatMessageTests
     [Fact]
     public void MethodFlagDiff_FormatMessage_IncludesTypeMethodAndFlag()
     {
-        var diff = new MethodFlagDiff("MyNamespace.MyClass", "System.Void MyMethod()", "Visibility");
+        var diff = new MethodFlagDiff("MyNamespace.MyClass", "System.Void MyMethod()", DiffFlag.Visibility);
         Assert.Equal(
             "Type 'MyNamespace.MyClass', Method 'System.Void MyMethod()': Visibility differs",
             diff.FormatMessage());
@@ -176,7 +176,7 @@ public class DiffEventFormatMessageTests
     [Fact]
     public void FieldFlagDiff_FormatMessage_IncludesFieldAndFlag()
     {
-        var diff = new FieldFlagDiff("MyNamespace.MyClass", "_value", "Visibility");
+        var diff = new FieldFlagDiff("MyNamespace.MyClass", "_value", DiffFlag.Visibility);
         Assert.Equal("Type 'MyNamespace.MyClass', Field '_value': Visibility differs", diff.FormatMessage());
     }
 

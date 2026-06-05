@@ -1,37 +1,24 @@
 using System.Text.Json.Serialization;
 
-namespace FennecLabs.Instrumentation.Result
+namespace FennecLabs.Instrumentation.Result;
+
+public class AssemblyResult
 {
-    public class AssemblyResult
+    public string Assembly { get; }
+    [JsonIgnore] public string FilePath { get; }
+    public List<ClassTypeResult> Types { get; } = [];
+    [JsonIgnore] public Exception? ExceptionOccurred { get; }
+    [JsonIgnore] public bool HasError => ExceptionOccurred != null;
+
+    public AssemblyResult(string assembly, string filePath)
     {
-        private readonly string _assembly;
-        private readonly string _filePath;
-        public string Assembly { get { return _assembly; } }
-        [JsonIgnore]
-        public string FilePath { get { return _filePath; }}
-        public AssemblyResult(string assembly, string filePath)
-        {
-            _assembly = assembly;
-            _filePath = filePath;
-            Types = new List<ClassTypeResult>();
-        }
+        Assembly = assembly;
+        FilePath = filePath;
+    }
 
-        public List<ClassTypeResult> Types {get; private set;}
-
-        [JsonIgnore]
-        public Exception? ExceptionOccurred { get; private set;} 
-        public void HandleException(Exception ex)
-        {
-            ExceptionOccurred = ex;
-        }
-        [JsonIgnore]
-        public bool HasError
-        {
-            get
-            {
-                return ExceptionOccurred != null;
-            }
-        }
+    public AssemblyResult(string assembly, string filePath, Exception exception)
+        : this(assembly, filePath)
+    {
+        ExceptionOccurred = exception;
     }
 }
-

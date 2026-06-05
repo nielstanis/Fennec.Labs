@@ -131,7 +131,7 @@ public class AssemblyComparerTests
         var result = new AssemblyComparer(a1, a2).Compare();
 
         Assert.Contains(result.Events.OfType<TypeFlagDiff>(),
-            e => e.TypeName == "TestNamespace.MyClass" && e.Flag == "IsPublic");
+            e => e.TypeName == "TestNamespace.MyClass" && e.Flag == DiffFlag.IsPublic);
         Assert.False(result.AreEqual);
     }
 
@@ -856,7 +856,7 @@ public class AssemblyComparerTests
 
         Assert.Contains(result.Events.OfType<TypeFlagDiff>(),
             e => e.TypeName == "TestNamespace.MyClass"
-              && e.Flag == "IsAbstract"
+              && e.Flag == DiffFlag.IsAbstract
               && e.Was == false && e.Is == true);
         Assert.False(result.AreEqual);
     }
@@ -874,7 +874,7 @@ public class AssemblyComparerTests
 
         Assert.Contains(result.Events.OfType<TypeFlagDiff>(),
             e => e.TypeName == "TestNamespace.MyClass"
-              && e.Flag == "IsSealed"
+              && e.Flag == DiffFlag.IsSealed
               && e.Was == false && e.Is == true);
         Assert.False(result.AreEqual);
     }
@@ -900,7 +900,7 @@ public class AssemblyComparerTests
         Assert.Contains(result.Events.OfType<MethodFlagDiff>(),
             e => e.TypeName == "TestNamespace.MyClass"
               && e.Signature.Contains("DoWork")
-              && e.Flag == "Visibility");
+              && e.Flag == DiffFlag.Visibility);
         Assert.False(result.AreEqual);
     }
 
@@ -926,7 +926,7 @@ public class AssemblyComparerTests
         Assert.Contains(result.Events.OfType<MethodFlagDiff>(),
             e => e.TypeName == "TestNamespace.MyClass"
               && e.Signature.Contains("DoWork")
-              && e.Flag == "IsStatic");
+              && e.Flag == DiffFlag.IsStatic);
         Assert.False(result.AreEqual);
     }
 
@@ -1118,7 +1118,7 @@ public class AssemblyComparerTests
         Assert.Contains(result.Events.OfType<FieldFlagDiff>(),
             e => e.TypeName == "TestNamespace.MyClass"
               && e.FieldName == "_value"
-              && e.Flag == "Visibility");
+              && e.Flag == DiffFlag.Visibility);
         Assert.False(result.AreEqual);
     }
 
@@ -1139,7 +1139,7 @@ public class AssemblyComparerTests
         Assert.Contains(result.Events.OfType<FieldFlagDiff>(),
             e => e.TypeName == "TestNamespace.MyClass"
               && e.FieldName == "_value"
-              && e.Flag == "IsStatic");
+              && e.Flag == DiffFlag.IsStatic);
         Assert.False(result.AreEqual);
     }
 

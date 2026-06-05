@@ -1,8 +1,5 @@
 using System.Text.Json;
-using FennecLabs.AssemblyDiff;
 using FennecLabs.Cli.Rendering;
-using Mono.Cecil;
-using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
 
@@ -46,13 +43,11 @@ internal class CompareLocalFilesCommandHandler
     {
         try
         {
-            using var assembly1 = AssemblyDefinition.ReadAssembly(file1);
-            using var assembly2 = AssemblyDefinition.ReadAssembly(file2);
-            var result = new AssemblyComparer(assembly1, assembly2).Compare();
-            var dllResults = new List<DllDiffResult> { new(Path.GetFileName(file1), result, null) };
+            var dllResult = DllPipeline.CompareDllFiles(file1, file2);
+            var dllResults = new List<DllDiffResult> { dllResult };
             return EmitResult(
                 file1, file2, dllResults, [], [],
-                result.AreEqual ? 1 : 0, result.AreEqual ? 0 : 1, 0,
+                dllResult.Result!.AreEqual ? 1 : 0, dllResult.Result.AreEqual ? 0 : 1, 0,
                 outputMode);
         }
         catch (Exception ex)
@@ -74,20 +69,10 @@ internal class CompareLocalFilesCommandHandler
             Directory.CreateDirectory(temp1);
             Directory.CreateDirectory(temp2);
 
-            if (outputMode == OutputMode.Human)
-            {
-                await AnsiConsole.Status().Spinner(Spinner.Known.Dots).SpinnerStyle(Style.Parse("grey"))
-                    .StartAsync($"Extracting {Path.GetFileName(file1)}…",
-                        async _ => await NupkgHelper.ExtractAsync(file1, temp1));
-                await AnsiConsole.Status().Spinner(Spinner.Known.Dots).SpinnerStyle(Style.Parse("grey"))
-                    .StartAsync($"Extracting {Path.GetFileName(file2)}…",
-                        async _ => await NupkgHelper.ExtractAsync(file2, temp2));
-            }
-            else
-            {
-                await NupkgHelper.ExtractAsync(file1, temp1);
-                await NupkgHelper.ExtractAsync(file2, temp2);
-            }
+            await StatusRunner.RunAsync(outputMode, $"Extracting {Path.GetFileName(file1)}…",
+                () => NupkgHelper.ExtractAsync(file1, temp1));
+            await StatusRunner.RunAsync(outputMode, $"Extracting {Path.GetFileName(file2)}…",
+                () => NupkgHelper.ExtractAsync(file2, temp2));
 
             var dlls1 = NupkgHelper.GetDlls(temp1);
             var dlls2 = NupkgHelper.GetDlls(temp2);
@@ -102,26 +87,8 @@ internal class CompareLocalFilesCommandHandler
                 return 0;
             }
 
-            var dllResults = new List<DllDiffResult>();
-            int identicalCount = 0, differentCount = 0, errorCount = 0;
-
-            foreach (var dllPath in matchingDlls)
-            {
-                try
-                {
-                    using var a1 = AssemblyDefinition.ReadAssembly(dlls1[dllPath].FullPath);
-                    using var a2 = AssemblyDefinition.ReadAssembly(dlls2[dllPath].FullPath);
-                    var result = new AssemblyComparer(a1, a2).Compare();
-                    dllResults.Add(new DllDiffResult(dllPath, result, null));
-                    if (result.AreEqual) identicalCount++;
-                    else differentCount++;
-                }
-                catch (Exception ex)
-                {
-                    dllResults.Add(new DllDiffResult(dllPath, null, ex.Message));
-                    errorCount++;
-                }
-            }
+            var (dllResults, identicalCount, differentCount, errorCount) =
+                DllPipeline.CompareMatchedDlls(matchingDlls, dlls1, dlls2);
 
             return EmitResult(
                 file1, file2, dllResults, onlyIn1, onlyIn2,
@@ -152,30 +119,7 @@ internal class CompareLocalFilesCommandHandler
             {
                 file1,
                 file2,
-                perDll = dllResults.Select(d => new
-                {
-                    dllPath = d.DllPath,
-                    areEqual = d.Result?.AreEqual,
-                    events = d.Result?.Events.Select(e => new
-                    {
-                        type = e.GetType().Name,
-                        message = e.FormatMessage(),
-                    }),
-                    typesAdded = d.Result?.TypesOnlyInAssembly2.ToList(),
-                    typesRemoved = d.Result?.TypesOnlyInAssembly1.ToList(),
-                    methodBodyChanges = d.Result?.MethodBodyChanges.Select(m => new
-                    {
-                        typeName = m.TypeName,
-                        signature = m.Signature,
-                        instructionDiffs = m.Changes.Select(c => new
-                        {
-                            c.Index, c.Instruction1, c.Instruction2,
-                        }),
-                        instructions1 = m.Instructions1,
-                        instructions2 = m.Instructions2,
-                    }),
-                    error = d.Error,
-                }),
+                perDll = dllResults.Select(DllPipeline.FormatDllResult),
                 onlyInFile1 = onlyIn1,
                 onlyInFile2 = onlyIn2,
                 summary = new { identical = identicalCount, different = differentCount, errors = errorCount },
