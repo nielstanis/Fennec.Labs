@@ -38,13 +38,14 @@ namespace FennecLabs.DotNetCli.Tests
         }
 
         [Fact]
-        public async Task GetPackageListAsync_WithInvalidProject_ReturnsNull()
+        public async Task GetPackageListAsync_WithInvalidProject_ThrowsInvalidOperationException()
         {
             var invalidProjectPath = "/nonexistent/path/NonExistent.csproj";
 
-            var packageList = await DotnetCliExecutor.GetPackageListAsync(invalidProjectPath);
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => DotnetCliExecutor.GetPackageListAsync(invalidProjectPath));
 
-            Assert.Null(packageList);
+            Assert.Contains("NonExistent.csproj", exception.Message);
         }
     }
 }

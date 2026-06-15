@@ -43,19 +43,20 @@ public class DotnetCliExecutor
         };
     }
 
-    public static async Task<PackageListResult?> GetPackageListAsync(string projectPath, CancellationToken cancellationToken = default)
+    public static Task<PackageListResult?> GetPackageListAsync(string projectPath, CancellationToken cancellationToken = default) =>
+        GetPackageListInternalAsync($"list \"{projectPath}\" package --include-transitive --format json", cancellationToken);
+
+    public static Task<PackageListResult?> GetPackageListAsync(CancellationToken cancellationToken = default) =>
+        GetPackageListInternalAsync("list package --include-transitive --format json", cancellationToken);
+
+    private static async Task<PackageListResult?> GetPackageListInternalAsync(string arguments, CancellationToken cancellationToken)
     {
-        var arguments = $"list \"{projectPath}\" package  --include-transitive --format json";
-
         var result = await ExecuteAsync(arguments, cancellationToken);
-        return result.DeserializePackageList();
-    }
+        if (result.ExitCode != 0 && !string.IsNullOrWhiteSpace(result.StandardError))
+        {
+            throw new InvalidOperationException(result.StandardError.Trim());
+        }
 
-    public static async Task<PackageListResult?> GetPackageListAsync(CancellationToken cancellationToken = default)
-    {
-        var arguments = $"list package  --include-transitive --format json";
-
-        var result = await ExecuteAsync(arguments, cancellationToken);
         return result.DeserializePackageList();
     }
 }
