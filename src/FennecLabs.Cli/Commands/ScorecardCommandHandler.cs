@@ -25,7 +25,20 @@ internal class ScorecardCommandHandler
             AnsiConsole.WriteLine();
         }
 
-        var resolved = await ResolvePackagesAsync(projectPath, outputMode);
+        (Framework framework, List<PackageReference> packages)? resolved;
+        try
+        {
+            resolved = await ResolvePackagesAsync(projectPath, outputMode);
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (outputMode == OutputMode.Json)
+                Console.Error.WriteLine(ex.Message);
+            else
+                AnsiConsole.MarkupLine($"[red]{Markup.Escape(ex.Message)}[/]");
+            return 1;
+        }
+
         if (resolved == null)
             return 0;
 
