@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Surface `dotnet list package` failures in the `scorecard` command: `GetPackageListAsync` now throws `InvalidOperationException` with the trimmed stderr when `dotnet` exits non-zero, and `ScorecardCommandHandler` prints the real error and exits 1 instead of misleadingly reporting "No packages found in the project." (FD-029)
 - Fix zip-slip path traversal in `NupkgHelper.ExtractAsync`: validate each archive entry resolves within the extraction root before writing; throw `InvalidOperationException` on traversal attempts from untrusted `.nupkg` files (FD-033)
 
 ### Changed
