@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Capture `Ldftn`, `Ldvirtftn`, and `Jmp` opcodes in `AssemblyAnalyzer.Analyze` so delegate/event-handler construction and tail calls show up as invocations instead of being silently dropped (FD-009)
+
 ### Fixed
 
 - Surface `dotnet list package` failures in the `scorecard` command: `GetPackageListAsync` now throws `InvalidOperationException` with the trimmed stderr when `dotnet` exits non-zero, and `ScorecardCommandHandler` prints the real error and exits 1 instead of misleadingly reporting "No packages found in the project." (FD-029)
