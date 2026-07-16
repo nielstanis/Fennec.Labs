@@ -115,6 +115,89 @@ namespace FennecLabs.Instrumentation.Tests
             }
         }
 
+        [Fact]
+        public void Analyze_WithDelegateConstruction_CapturesLdftnTarget()
+        {
+            var tempPath = CreateTempAssembly(assembly =>
+            {
+                var module = assembly.MainModule;
+                var type = new TypeDefinition("", "DelegateHost",
+                    TypeAttributes.Public | TypeAttributes.Class, module.TypeSystem.Object);
+
+                var target = new MethodDefinition("OnClick",
+                    MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.Void);
+                target.Body = new MethodBody(target);
+                target.Body.GetILProcessor().Append(target.Body.GetILProcessor().Create(OpCodes.Ret));
+                type.Methods.Add(target);
+
+                var actionCtor = module.ImportReference(typeof(Action).GetConstructor(new[] { typeof(object), typeof(IntPtr) }));
+
+                var caller = new MethodDefinition("MakeDelegate",
+                    MethodAttributes.Public | MethodAttributes.Static, module.ImportReference(typeof(Action)));
+                caller.Body = new MethodBody(caller);
+                var il = caller.Body.GetILProcessor();
+                il.Append(il.Create(OpCodes.Ldnull));
+                il.Append(il.Create(OpCodes.Ldftn, target));
+                il.Append(il.Create(OpCodes.Newobj, actionCtor));
+                il.Append(il.Create(OpCodes.Ret));
+                type.Methods.Add(caller);
+
+                module.Types.Add(type);
+            });
+            try
+            {
+                var result = new AssemblyAnalyzer(tempPath).Analyze();
+
+                Assert.False(result.HasError);
+                var host = result.Types.First(t => t.ClassType == "DelegateHost");
+                var method = host.Methods.First(m => m.Name == "MakeDelegate");
+                Assert.Contains(method.Invocations, i => i.Invocation.Contains("OnClick"));
+            }
+            finally
+            {
+                File.Delete(tempPath);
+            }
+        }
+
+        [Fact]
+        public void Analyze_WithJmpInstruction_CapturesTarget()
+        {
+            var tempPath = CreateTempAssembly(assembly =>
+            {
+                var module = assembly.MainModule;
+                var type = new TypeDefinition("", "JmpHost",
+                    TypeAttributes.Public | TypeAttributes.Class, module.TypeSystem.Object);
+
+                var target = new MethodDefinition("Target",
+                    MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.Void);
+                target.Body = new MethodBody(target);
+                target.Body.GetILProcessor().Append(target.Body.GetILProcessor().Create(OpCodes.Ret));
+                type.Methods.Add(target);
+
+                var caller = new MethodDefinition("Caller",
+                    MethodAttributes.Public | MethodAttributes.Static, module.TypeSystem.Void);
+                caller.Body = new MethodBody(caller);
+                var il = caller.Body.GetILProcessor();
+                il.Append(il.Create(OpCodes.Jmp, target));
+                type.Methods.Add(caller);
+
+                module.Types.Add(type);
+            });
+            try
+            {
+                var result = new AssemblyAnalyzer(tempPath).Analyze();
+
+                Assert.False(result.HasError);
+                var host = result.Types.First(t => t.ClassType == "JmpHost");
+                var method = host.Methods.First(m => m.Name == "Caller");
+                Assert.Contains(method.Invocations, i => i.Invocation.Contains("Target"));
+            }
+            finally
+            {
+                File.Delete(tempPath);
+            }
+        }
+
         private static string CreateTempAssembly(Action<AssemblyDefinition> configure)
         {
             var name = new AssemblyNameDefinition("TestAssembly", new Version(1, 0, 0, 0));

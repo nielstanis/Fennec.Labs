@@ -38,6 +38,9 @@ namespace FennecLabs.Instrumentation
                                     || (u.OpCode == OpCodes.Callvirt)
                                     || (u.OpCode == OpCodes.Calli)
                                     || (u.OpCode == OpCodes.Newobj)
+                                    || (u.OpCode == OpCodes.Ldftn)
+                                    || (u.OpCode == OpCodes.Ldvirtftn)
+                                    || (u.OpCode == OpCodes.Jmp)
                                     ))
                                 {
                                     var splits = instruction.Operand?.ToString()?.Split(" ") ?? Array.Empty<string>();
