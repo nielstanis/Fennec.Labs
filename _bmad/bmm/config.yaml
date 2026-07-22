@@ -10,7 +10,7 @@ project_knowledge: "{project-root}/docs"
 
 # Core Configuration Values
 user_name: Niels
-project_name: nielstanis-fluffy-telegram
+project_name: Fennec.Labs
 communication_language: English
 document_output_language: English
 output_folder: _bmad-output

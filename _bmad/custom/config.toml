@@ -5,3 +5,7 @@
 #
 # [agents.bmad-agent-pm]
 # description = "Prefers short, bulleted PRDs over narrative drafts."
+
+[core]
+# Installer captured the worktree folder name instead of the actual project.
+project_name = "Fennec.Labs"
