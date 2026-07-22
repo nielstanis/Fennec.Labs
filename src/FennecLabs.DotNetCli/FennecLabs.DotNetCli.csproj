@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\FennecLabs.Contracts\FennecLabs.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

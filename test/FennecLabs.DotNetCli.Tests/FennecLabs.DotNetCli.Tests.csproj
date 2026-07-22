@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FennecLabs.DotNetCli\FennecLabs.DotNetCli.csproj" />
+    <ProjectReference Include="..\..\src\FennecLabs.Contracts\FennecLabs.Contracts.csproj" />
     <ProjectReference Include="..\FennecLabs.TestUtilities\FennecLabs.TestUtilities.csproj" />
   </ItemGroup>
 

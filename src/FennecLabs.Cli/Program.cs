@@ -103,6 +103,23 @@ class Program
                 parseResult.GetValue(globalOutputOption) ?? ".fennec");
         });
 
+        // dependencies command
+        var dependenciesProjectPathOption = new Option<string>("--project", "-p")
+        {
+            Description = "Path to the .csproj file"
+        };
+
+        var dependenciesCommand = new Command("dependencies", "Emit a normalized dependency graph artifact for a project");
+        dependenciesCommand.Options.Add(dependenciesProjectPathOption);
+        dependenciesCommand.SetAction(async (ParseResult parseResult) =>
+        {
+            var handler = new DependencyGraphCommandHandler();
+            return await handler.ExecuteAsync(
+                parseResult.GetValue(dependenciesProjectPathOption),
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)),
+                parseResult.GetValue(globalOutputOption) ?? ".fennec");
+        });
+
         // compare command
         var compareNugetOption = new Option<string>("--nuget", "-n")
         {
@@ -267,6 +284,7 @@ class Program
 
         rootCommand.Subcommands.Add(instrumentCommand);
         rootCommand.Subcommands.Add(scorecardCommand);
+        rootCommand.Subcommands.Add(dependenciesCommand);
         rootCommand.Subcommands.Add(compareCommand);
         rootCommand.Subcommands.Add(reproduceCommand);
         rootCommand.Subcommands.Add(feedsCommand);

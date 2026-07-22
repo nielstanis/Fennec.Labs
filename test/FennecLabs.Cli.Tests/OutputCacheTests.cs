@@ -24,6 +24,13 @@ public class OutputCacheTests
     }
 
     [Fact]
+    public void DependenciesDir_BuildsCorrectPath()
+    {
+        var expected = Path.Combine(".fennec", "dependencies", "MyApp", "2026-01-01_00-00-00");
+        Assert.Equal(expected, OutputCache.DependenciesDir(".fennec", "MyApp", "2026-01-01_00-00-00"));
+    }
+
+    [Fact]
     public async Task WriteAsync_ThenExists_ReturnsTrue()
     {
         var path = UniqueTempPath("result.json");

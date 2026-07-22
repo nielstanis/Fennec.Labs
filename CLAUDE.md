@@ -33,6 +33,7 @@ No `.sln` file — reference individual projects with `-p`.
 | `fennec compare` | Diff assemblies between two NuGet versions or two local `.dll`/`.nupkg` files |
 | `fennec reproduce` | Compare a local `.nupkg` or build output directory against the published NuGet feed version |
 | `fennec scorecard` | Fetch OpenSSF Scorecard for all deps in a `.csproj` (direct + transitive) |
+| `fennec dependencies` | Emit a normalized, canonical dependency graph artifact for a `.csproj` |
 | `fennec feeds` | Manage NuGet feed sources (`list` / `add` / `remove`) |
 
 Global options on every command: `--json`/`-j`, `--output`/`-o` (default `.fennec`), `--no-cache`/`-C`.
