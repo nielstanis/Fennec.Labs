@@ -56,50 +56,36 @@ dotnet run --project src/FennecLabs.Cli -- <args>    # run from source
 
 ---
 
-## Feature Design (FD) Management
+## Feature Design (FD) Management — Legacy / Archived
 
-Features are tracked in `docs/features/`. Each FD has a dedicated file (`FD-XXX_TITLE.md`) and is indexed in `FEATURE_INDEX.md`.
+FD-001 through FD-034 were tracked in `docs/features/` (`FD-XXX_TITLE.md`, indexed in `FEATURE_INDEX.md`). **This process is retired for new work** — planning now goes through BMAD-METHOD (see below). `docs/features/` is kept as-is for historical reference only; do not create new `FD-XXX` files or run `/fd-*` slash commands for new features. Existing content there (lifecycle stages, `%%` inline annotations, changelog conventions) still applies if closing out something already in flight.
 
-### FD Lifecycle
+## Planning & Feature Management (BMAD-METHOD)
 
-| Stage | Description |
-|-------|-------------|
-| **Planned** | Identified but not yet designed |
-| **Design** | Actively designing (exploring code, writing plan) |
-| **Open** | Designed and ready for implementation |
-| **In Progress** | Currently being implemented |
-| **Pending Verification** | Code complete, awaiting verification |
-| **Complete** | Verified working, ready to archive |
-| **Deferred** | Postponed (low priority or blocked) |
-| **Closed** | Won't implement (superseded or not needed) |
+This project uses [BMAD-METHOD](https://docs.bmad-method.org) (`bmm` module, v6) for planning and implementation of new features — including the hosted dashboard initiative. It's installed under `_bmad/` and its skills/agents are committed to the repo like any other project tooling.
 
-### Slash Commands
+### Where things live
 
-| Command | Purpose |
-|---------|---------|
-| `/fd-new` | Create a new feature design |
-| `/fd-explore` | Explore project - overview, FD history, recent activity |
-| `/fd-deep` | Deep parallel analysis — 4 agents explore a hard problem from different angles, verify claims, synthesize |
-| `/fd-status` | Show active FDs with status and grooming |
-| `/fd-verify` | Post-implementation: commit, proofread, verify |
-| `/fd-close` | Complete/close an FD, archive file, update index, update changelog |
+| Path | Purpose |
+|------|---------|
+| `_bmad/` | Installed BMAD core + `bmm` module, config (`config.toml`, `config.user.toml`) |
+| `_bmad-output/planning-artifacts/` | PRDs, architecture docs, epics/stories — committed, living documentation |
+| `_bmad-output/implementation-artifacts/` | Dev-loop outputs (story context, review notes) |
+| `.agents/skills/` | 46 BMAD skills (agent personas + workflows), invoked via the `skill` tool |
+| `.github/agents/` | BMAD agent personas exposed as custom agents (Analyst, PM, Architect, Dev, UX Designer, Tech Writer) |
+
+### Getting started / key skills
+
+- `bmad-help` — ask anytime for guidance on what to do next
+- `bmad-agent-analyst` / `bmad-agent-pm` / `bmad-agent-architect` / `bmad-agent-ux-designer` / `bmad-agent-dev` / `bmad-agent-tech-writer` — domain-expert personas
+- `bmad-create-prd`, `bmad-create-architecture`, `bmad-create-epics-and-stories` — planning workflows
+- `bmad-dev-story`, `bmad-dev-auto`, `bmad-code-review` — implementation workflows
+- `bmad-party-mode` — bring multiple personas into one session to collaborate
 
 ### Conventions
 
-- **FD files**: `docs/features/FD-XXX_TITLE.md` (XXX = zero-padded number)
-- **Commit format**: `FD-XXX: Brief description`
-- **Numbering**: Next number = highest across all index sections + 1
-- **Source of truth**: FD file status > index (if discrepancy, file wins)
-- **Archive**: Completed FDs move to `docs/features/archive/`
-
-### Managing the Index
-
-The `FEATURE_INDEX.md` file has four sections:
-
-1. **Active Features** — All non-complete FDs, sorted by FD number
-2. **Completed** — Completed FDs, newest first
-3. **Deferred / Closed** — Items that won't be done
-4. **Backlog** — Low-priority or blocked items parked for later
+- Run `dotnet build` / `dotnet test` as usual for validation — BMAD governs planning/process, not the build.
+- Keep hosted (multi-package) and project-scoped (single `.csproj`) concerns explicit in PRDs/architecture docs — this repo's dashboard work needs shared data structures/storage that both modes can reuse; capture that design in the architecture doc before implementation starts.
 
 ### Inline Annotations (`%%`)
 
@@ -109,12 +95,12 @@ Lines starting with `%%` in any file are **inline annotations from the user**. W
 - After acting on an annotation, remove the `%%` line from the file
 - If an annotation is ambiguous, ask for clarification before acting
 
-This enables a precise review workflow: the engineer annotates FD files or plan docs directly in the editor, then asks Claude to address all annotations — tighter than conversational back-and-forth for complex designs.
+This enables a precise review workflow: the engineer annotates FD/PRD/architecture files directly in the editor, then asks Claude to address all annotations — tighter than conversational back-and-forth for complex designs.
 
 ### Changelog
 
 - **Format**: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) with [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
-- **Updated by**: `/fd-close` (complete disposition only) adds entries under `[Unreleased]`
-- **FD references**: Entries end with `(FD-XXX)` for traceability
+- **Updated by**: completed BMAD stories/epics (or legacy `/fd-close`) add entries under `[Unreleased]`
+- **Traceability**: Entries end with `(FD-XXX)` for legacy items, or the relevant epic/story ID for BMAD-tracked work
 - **Subsections**: Added, Changed, Fixed, Removed
 - **Releasing**: Rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD`, add fresh `[Unreleased]` header
