@@ -94,10 +94,12 @@ jobs:
       - name: Login to nuget.org
         id: nuget-login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841  # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USERNAME }}
 
       - name: Push to nuget.org
         env:
-          NUGET_API_KEY: ${{ steps.nuget-login.outputs.api-key }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: >
           dotnet nuget push ./artifacts/packages/*.nupkg
           --source https://api.nuget.org/v3/index.json
