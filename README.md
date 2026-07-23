@@ -98,6 +98,22 @@ fennec scorecard --project src/MyApp/MyApp.csproj --report-format html,md
 fennec scorecard --project src/MyApp/MyApp.csproj --json
 ```
 
+### dependencies
+
+Emit a normalized, canonical dependency graph artifact for a project's transitive dependency tree.
+
+```bash
+fennec dependencies --project src/MyApp/MyApp.csproj
+
+# JSON output
+fennec dependencies --project src/MyApp/MyApp.csproj --json
+```
+
+Package identity is normalized to lowercase invariant culture and deduplicated across top-level
+and transitive package lists (top-level wins). Artifacts are written to
+`.fennec/dependencies/<project>/<timestamp>/result.json` using the canonical dashboard artifact
+envelope (`$schema`, `schemaVersion`, `command`, `producedAt`, `producerVersion`, `sourceContext`, `payload`).
+
 ### feeds
 
 Manage NuGet feed sources used by the tool.

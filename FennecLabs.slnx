@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/FennecLabs.AssemblyDiff/FennecLabs.AssemblyDiff.csproj" />
+    <Project Path="src/FennecLabs.Contracts/FennecLabs.Contracts.csproj" />
     <Project Path="src/FennecLabs.DotNetCli/FennecLabs.DotNetCli.csproj" />
     <Project Path="src/FennecLabs.Instrumentation/FennecLabs.Instrumentation.csproj" />
     <Project Path="src/FennecLabs.NuGet/FennecLabs.NuGet.csproj" />
@@ -12,6 +13,8 @@
   <Folder Name="/test/">
     <Project Path="test/FennecLabs.AssemblyDiff.Tests/FennecLabs.AssemblyDiff.Tests.csproj" />
     <Project Path="test/FennecLabs.Cli.Tests/FennecLabs.Cli.Tests.csproj" />
+    <Project Path="test/FennecLabs.Contracts.Tests/FennecLabs.Contracts.Tests.csproj" />
+    <Project Path="test/FennecLabs.DotNetCli.Tests/FennecLabs.DotNetCli.Tests.csproj" />
     <Project Path="test/FennecLabs.Instrumentation.Tests/FennecLabs.Instrumentation.Tests.csproj" />
     <Project Path="test/FennecLabs.TestUtilities/FennecLabs.TestUtilities.csproj" />
   </Folder>

@@ -11,6 +11,9 @@ internal static class OutputCache
     internal static string ScorecardDir(string root, string projectName, string timestamp) =>
         Path.Combine(root, "scorecard", projectName, timestamp);
 
+    internal static string DependenciesDir(string root, string projectName, string timestamp) =>
+        Path.Combine(root, "dependencies", projectName, timestamp);
+
     internal static bool Exists(string path) => File.Exists(path);
 
     internal static string? TryLoad(string path) =>

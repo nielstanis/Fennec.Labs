@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- New `dependencies` command normalizes `dotnet package list --include-transitive --format json` output into the canonical `DashboardArtifactEnvelope<DependencyGraphPayload>` shape (`FennecLabs.Contracts.DependencyGraphPayload`/`DependencyNode`, `FennecLabs.DotNetCli.DependencyGraphNormalizer`); package identity is normalized to lowercase invariant culture and deduplicated across top-level/transitive lists, preferring top-level; artifacts are written to `.fennec/dependencies/<project>/<timestamp>/result.json` (Epic 1 / Story 1.2)
 - Capture `Ldftn`, `Ldvirtftn`, and `Jmp` opcodes in `AssemblyAnalyzer.Analyze` so delegate/event-handler construction and tail calls show up as invocations instead of being silently dropped (FD-009)
 
 ### Fixed
