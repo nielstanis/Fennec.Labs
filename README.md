@@ -98,6 +98,12 @@ fennec scorecard --project src/MyApp/MyApp.csproj --report-format html,md
 fennec scorecard --project src/MyApp/MyApp.csproj --json
 ```
 
+`--json` output and the cached `result.json` use the canonical dashboard artifact envelope.
+Results are keyed by normalized package identity (matching `dependencies` command output) so
+scorecard signals can be joined to dependency graph nodes; packages with no located repository or
+a failed lookup are represented explicitly with `status: "unavailable"`/`"error"` and a structured
+`error` object rather than being omitted from the payload.
+
 ### dependencies
 
 Emit a normalized, canonical dependency graph artifact for a project's transitive dependency tree.

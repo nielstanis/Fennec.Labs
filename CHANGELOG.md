@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `scorecard` command now emits its `result.json` artifact (and `--json` stdout) in the canonical `DashboardArtifactEnvelope<ScorecardGraphPayload>` shape (`FennecLabs.Contracts.ScorecardGraphPayload`/`ScorecardPackageResult`/`ScorecardCheckResult`/`ScorecardStatus`, `FennecLabs.Scorecard.ScorecardGraphNormalizer`); results are keyed by the same normalized package identity used by `dependencies`, and packages with no located repository or a failed lookup are represented explicitly via `status: "unavailable"`/`"error"` plus a structured `ArtifactError` rather than being silently omitted (Epic 1 / Story 1.3)
 - New `dependencies` command normalizes `dotnet package list --include-transitive --format json` output into the canonical `DashboardArtifactEnvelope<DependencyGraphPayload>` shape (`FennecLabs.Contracts.DependencyGraphPayload`/`DependencyNode`, `FennecLabs.DotNetCli.DependencyGraphNormalizer`); package identity is normalized to lowercase invariant culture and deduplicated across top-level/transitive lists, preferring top-level; artifacts are written to `.fennec/dependencies/<project>/<timestamp>/result.json` (Epic 1 / Story 1.2)
 - Capture `Ldftn`, `Ldvirtftn`, and `Jmp` opcodes in `AssemblyAnalyzer.Analyze` so delegate/event-handler construction and tail calls show up as invocations instead of being silently dropped (FD-009)
 

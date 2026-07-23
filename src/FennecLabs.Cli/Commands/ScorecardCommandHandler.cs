@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FennecLabs.Cli.Rendering;
+using FennecLabs.Contracts;
 using FennecLabs.DotNetCli;
 using FennecLabs.Scorecard;
 using Spectre.Console;
@@ -46,7 +47,20 @@ internal class ScorecardCommandHandler
         var results = await FetchScorecardsAsync(allPackages, outputMode);
 
         var generatedAt = DateTime.Now;
-        var json = BuildJsonOutput(projectPath, framework, results, generatedAt);
+        var envelope = ScorecardGraphNormalizer.Normalize(
+            framework.FrameworkName,
+            results.Select(r => new PackageScorecardLookup
+            {
+                PackageId = r.PackageId,
+                PackageVersion = r.PackageVersion,
+                Result = r.Scorecard,
+                ErrorMessage = r.Error,
+            }).ToList(),
+            projectPath ?? ".",
+            Environment.CurrentDirectory,
+            ProducerVersion.Current,
+            producedAt: generatedAt);
+        var json = JsonSerializer.Serialize(envelope, ContractJsonOptions.Default);
 
         var projectName = projectPath != null
             ? Path.GetFileNameWithoutExtension(projectPath)
@@ -150,50 +164,6 @@ internal class ScorecardCommandHandler
             }
         }
         return results;
-    }
-
-    private static string BuildJsonOutput(
-        string? projectPath, Framework framework,
-        List<PackageScorecardResult> results, DateTime generatedAt)
-    {
-        var output = new
-        {
-            project = projectPath ?? ".",
-            framework = framework.FrameworkName,
-            generatedAt,
-            dependencyTree = new
-            {
-                topLevel = framework.TopLevelPackages.Select(p => new
-                {
-                    id = p.Id,
-                    requestedVersion = p.RequestedVersion,
-                    resolvedVersion = p.ResolvedVersion,
-                }),
-                transitive = framework.TransitivePackages.Select(p => new
-                {
-                    id = p.Id,
-                    requestedVersion = p.RequestedVersion,
-                    resolvedVersion = p.ResolvedVersion,
-                }),
-            },
-            packages = results.Select(r => new
-            {
-                packageId = r.PackageId,
-                packageVersion = r.PackageVersion,
-                score = r.Scorecard?.Score,
-                repoName = r.Scorecard?.Repo.Name,
-                scorecardDate = r.Scorecard?.Date,
-                scorecardVersion = r.Scorecard?.Scorecard.Version,
-                checks = r.Scorecard?.Checks.Select(c => new
-                {
-                    name = c.Name,
-                    score = c.Score,
-                    reason = c.Reason,
-                }),
-                error = r.Error,
-            }),
-        };
-        return JsonSerializer.Serialize(output, Json.Options);
     }
 
     private static async Task WriteReportsAsync(
