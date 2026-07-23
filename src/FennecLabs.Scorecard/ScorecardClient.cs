@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FennecLabs.NuGet;
@@ -63,6 +64,11 @@ public class ScorecardClient : IDisposable
         }
         catch (HttpRequestException ex)
         {
+            if (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                return null;
+            }
+
             throw new InvalidOperationException($"Failed to retrieve scorecard result: {ex.Message}", ex);
         }
     }
