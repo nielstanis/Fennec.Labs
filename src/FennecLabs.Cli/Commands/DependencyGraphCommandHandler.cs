@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Text.Json;
 using FennecLabs.Contracts;
 using FennecLabs.DotNetCli;
@@ -52,7 +51,7 @@ internal class DependencyGraphCommandHandler
             framework,
             resolvedProjectPath,
             Environment.CurrentDirectory,
-            GetProducerVersion());
+            ProducerVersion.Current);
 
         if (outputMode == OutputMode.Human)
         {
@@ -86,12 +85,6 @@ internal class DependencyGraphCommandHandler
 
         return 0;
     }
-
-    private static string GetProducerVersion() =>
-        typeof(DependencyGraphCommandHandler).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
-        ?? typeof(DependencyGraphCommandHandler).Assembly.GetName().Version?.ToString()
-        ?? "unknown";
 
     private static void EmitEmpty(OutputMode outputMode)
     {

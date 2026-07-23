@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FennecLabs.NuGet\FennecLabs.NuGet.csproj" />
+    <ProjectReference Include="..\FennecLabs.Contracts\FennecLabs.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
