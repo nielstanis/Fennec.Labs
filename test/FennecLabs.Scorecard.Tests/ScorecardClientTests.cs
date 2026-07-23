@@ -40,12 +40,16 @@ public class ScorecardClientTests
 
     [Fact]
     [Trait("Category", "Live")]
-    public async Task GetScorecardResultAsync_WithInvalidRepository_ThrowsException()
+    public async Task GetScorecardResultAsync_WithInvalidRepository_ReturnsNull()
     {
         var client = new ScorecardClient();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await client.GetScorecardResultAsync("github.com", "nonexistent-org-12345", "nonexistent-repo-12345"));
+        var result = await client.GetScorecardResultAsync(
+            "github.com",
+            "nonexistent-org-12345",
+            "nonexistent-repo-12345");
+
+        Assert.Null(result);
     }
 
     [Fact]
@@ -346,14 +350,15 @@ public class ScorecardClientTests
     }
 
     [Fact]
-    public async Task GetScorecardResultAsync_WhenServerReturnsNotFound_ThrowsInvalidOperationException()
+    public async Task GetScorecardResultAsync_WhenServerReturnsNotFound_ReturnsNull()
     {
         var handler = new FakeScorecardHttpMessageHandler(HttpStatusCode.NotFound, "Not Found");
         using var httpClient = new HttpClient(handler) { BaseAddress = new Uri("https://api.securityscorecards.dev") };
         using var client = new ScorecardClient(httpClient: httpClient, nugetService: null);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => client.GetScorecardResultAsync("github.com", "nobody", "norepo"));
+        var result = await client.GetScorecardResultAsync("github.com", "nobody", "norepo");
+
+        Assert.Null(result);
     }
 
     [Fact]
