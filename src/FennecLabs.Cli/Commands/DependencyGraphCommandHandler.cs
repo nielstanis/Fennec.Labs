@@ -7,6 +7,19 @@ namespace FennecLabs.Cli.Commands;
 
 internal class DependencyGraphCommandHandler
 {
+    private readonly Func<string?, Task<PackageListResult?>> _packageListResolver;
+
+    public DependencyGraphCommandHandler()
+        : this(ResolvePackageListAsync)
+    {
+    }
+
+    internal DependencyGraphCommandHandler(Func<string?, Task<PackageListResult?>> packageListResolver)
+    {
+        _packageListResolver = packageListResolver
+            ?? throw new ArgumentNullException(nameof(packageListResolver));
+    }
+
     public async Task<int> ExecuteAsync(string? projectPath, OutputMode outputMode, string output)
     {
         if (outputMode == OutputMode.Human)
@@ -19,9 +32,7 @@ internal class DependencyGraphCommandHandler
         PackageListResult? packageList;
         try
         {
-            packageList = projectPath != null
-                ? await DotnetCliExecutor.GetPackageListAsync(projectPath)
-                : await DotnetCliExecutor.GetPackageListAsync();
+            packageList = await _packageListResolver(projectPath);
         }
         catch (InvalidOperationException ex)
         {
@@ -93,4 +104,9 @@ internal class DependencyGraphCommandHandler
         else
             AnsiConsole.MarkupLine("[yellow]No packages found in the project.[/]");
     }
+
+    private static Task<PackageListResult?> ResolvePackageListAsync(string? projectPath) =>
+        projectPath != null
+            ? DotnetCliExecutor.GetPackageListAsync(projectPath)
+            : DotnetCliExecutor.GetPackageListAsync();
 }

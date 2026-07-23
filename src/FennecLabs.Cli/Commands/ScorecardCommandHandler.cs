@@ -10,10 +10,27 @@ namespace FennecLabs.Cli.Commands;
 internal class ScorecardCommandHandler
 {
     private readonly ScorecardClient _scorecardClient;
+    private readonly Func<string?, OutputMode, Task<(Framework framework, List<PackageReference> packages)?>> _packageResolver;
+    private readonly Func<List<PackageReference>, OutputMode, Task<List<PackageScorecardResult>>> _scorecardFetcher;
 
     public ScorecardCommandHandler(ScorecardClient scorecardClient)
+        : this(
+            scorecardClient,
+            ResolvePackagesAsync,
+            (packages, outputMode, handler) => handler.FetchScorecardsAsync(packages, outputMode))
+    {
+    }
+
+    internal ScorecardCommandHandler(
+        ScorecardClient scorecardClient,
+        Func<string?, OutputMode, Task<(Framework framework, List<PackageReference> packages)?>> packageResolver,
+        Func<List<PackageReference>, OutputMode, ScorecardCommandHandler, Task<List<PackageScorecardResult>>> scorecardFetcher)
     {
         _scorecardClient = scorecardClient;
+        _packageResolver = packageResolver ?? throw new ArgumentNullException(nameof(packageResolver));
+        _scorecardFetcher = async (packages, outputMode) =>
+            await (scorecardFetcher ?? throw new ArgumentNullException(nameof(scorecardFetcher)))
+                .Invoke(packages, outputMode, this);
     }
 
     public async Task<int> ExecuteAsync(
@@ -29,7 +46,7 @@ internal class ScorecardCommandHandler
         (Framework framework, List<PackageReference> packages)? resolved;
         try
         {
-            resolved = await ResolvePackagesAsync(projectPath, outputMode);
+            resolved = await _packageResolver(projectPath, outputMode);
         }
         catch (InvalidOperationException ex)
         {
@@ -44,7 +61,7 @@ internal class ScorecardCommandHandler
             return 0;
 
         var (framework, allPackages) = resolved.Value;
-        var results = await FetchScorecardsAsync(allPackages, outputMode);
+        var results = await _scorecardFetcher(allPackages, outputMode);
 
         var generatedAt = DateTime.Now;
         var envelope = ScorecardGraphNormalizer.Normalize(
