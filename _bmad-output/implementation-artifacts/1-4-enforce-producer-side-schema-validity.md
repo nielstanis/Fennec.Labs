@@ -4,7 +4,7 @@ baseline_commit: 854074f305cb61170ef6748b1e41a49e412e38c6
 
 # Story 1.4: Enforce producer-side schema validity
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -167,3 +167,4 @@ GPT-5.3-Codex (model ID: gpt-5.3-codex)
 ## Change Log
 
 - 2026-07-23: Implemented Story 1.4 producer-side schema validity coverage and marked story ready for review.
+- 2026-07-24: Story 1.4 accepted and moved from review to done.
