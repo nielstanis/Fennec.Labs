@@ -14,6 +14,11 @@ internal static class OutputCache
     internal static string DependenciesDir(string root, string projectName, string timestamp) =>
         Path.Combine(root, "dependencies", projectName, timestamp);
 
+    // Placeholder for Story 1.4, which will generate a sha256-based runId. Any string
+    // may be passed as runId until then.
+    internal static string TaintDir(string root, string scope, string runId) =>
+        Path.Combine(root, "instrument", scope, "taint", runId);
+
     internal static bool Exists(string path) => File.Exists(path);
 
     internal static string? TryLoad(string path) =>

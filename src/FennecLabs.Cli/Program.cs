@@ -1,6 +1,7 @@
 using System.CommandLine;
 using FennecLabs.Cli;
 using FennecLabs.Cli.Commands;
+using FennecLabs.Cli.Commands.Taint;
 using FennecLabs.NuGet;
 using FennecLabs.Scorecard;
 
@@ -53,11 +54,50 @@ class Program
             DefaultValueFactory = _ => "fxt"
         };
 
+        var taintOption = new Option<bool>("--taint")
+        {
+            Description = "Enable taint analysis"
+        };
+        var taintPolicyOption = new Option<string>("--taint-policy")
+        {
+            Description = "Path to custom taint policy JSON"
+        };
+        var taintMaxDepthOption = new Option<int>("--taint-max-depth")
+        {
+            Description = "Max call-chain depth (default: 8)",
+            DefaultValueFactory = _ => 8
+        };
+        var taintTimeoutOption = new Option<int>("--taint-timeout")
+        {
+            Description = "Analysis timeout in seconds (default: 120)",
+            DefaultValueFactory = _ => 120
+        };
+        var taintLlmHandoffOption = new Option<bool>("--taint-llm-handoff")
+        {
+            Description = "Emit LLM handoff artifact"
+        };
+        var taintIncludeThirdPartyOption = new Option<bool>("--taint-include-third-party")
+        {
+            Description = "Walk IL of third-party NuGet assemblies"
+        };
+        var taintSecondPartyPrefixOption = new Option<string[]>("--taint-second-party-prefix")
+        {
+            Description = "Package prefix treated as second-party (repeatable)",
+            AllowMultipleArgumentsPerToken = true,
+        };
+
         var instrumentCommand = new Command("instrument", "Instrument assembly files or NuGet packages");
         instrumentCommand.Options.Add(filenameOption);
         instrumentCommand.Options.Add(nugetOption);
         instrumentCommand.Options.Add(versionOption);
         instrumentCommand.Options.Add(fileFormatOption);
+        instrumentCommand.Options.Add(taintOption);
+        instrumentCommand.Options.Add(taintPolicyOption);
+        instrumentCommand.Options.Add(taintMaxDepthOption);
+        instrumentCommand.Options.Add(taintTimeoutOption);
+        instrumentCommand.Options.Add(taintLlmHandoffOption);
+        instrumentCommand.Options.Add(taintIncludeThirdPartyOption);
+        instrumentCommand.Options.Add(taintSecondPartyPrefixOption);
         instrumentCommand.SetAction(async (ParseResult parseResult) =>
         {
             var filename = parseResult.GetValue(filenameOption);
@@ -70,14 +110,57 @@ class Program
                 return 1;
             }
 
+            var taintEnabled = parseResult.GetValue(taintOption);
+            var taintOptions = new TaintOptions(
+                Enabled: taintEnabled,
+                PolicyPath: parseResult.GetValue(taintPolicyOption),
+                MaxDepth: parseResult.GetValue(taintMaxDepthOption),
+                TimeoutSeconds: parseResult.GetValue(taintTimeoutOption),
+                LlmHandoff: parseResult.GetValue(taintLlmHandoffOption),
+                IncludeThirdParty: parseResult.GetValue(taintIncludeThirdPartyOption),
+                SecondPartyPrefixes: parseResult.GetValue(taintSecondPartyPrefixOption) ?? []);
+
+            var version = parseResult.GetValue(versionOption);
+            var output = parseResult.GetValue(globalOutputOption) ?? ".fennec";
+            var fileFormat = parseResult.GetValue(fileFormatOption) ?? "fxt";
+            var outputMode = ResolveOutputMode(parseResult.GetValue(globalJsonOption));
+
             var handler = new InstrumentCommandHandler(new NuGetService());
+
+            // AC-2/3/4: when --taint is used with a .csproj/.sln/.slnx input, resolve the
+            // build output DLL(s) via BuildGraphReader and instrument each in turn.
+            if (taintEnabled && !string.IsNullOrWhiteSpace(filename) && BuildGraphReader.IsProjectOrSolution(filename))
+            {
+                IReadOnlyList<string> dllPaths;
+                try
+                {
+                    dllPaths = BuildGraphReader.Resolve(filename);
+                }
+                catch (BuildOutputNotFoundException ex)
+                {
+                    Console.Error.WriteLine(ex.Message);
+                    return 1;
+                }
+
+                var exitCode = 0;
+                foreach (var dllPath in dllPaths)
+                {
+                    var result = await handler.ExecuteAsync(
+                        dllPath, null, version, output, fileFormat, outputMode, taintOptions);
+                    if (result != 0)
+                        exitCode = result;
+                }
+                return exitCode;
+            }
+
             return await handler.ExecuteAsync(
                 filename,
                 nuget,
-                parseResult.GetValue(versionOption),
-                parseResult.GetValue(globalOutputOption) ?? ".fennec",
-                parseResult.GetValue(fileFormatOption) ?? "fxt",
-                ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
+                version,
+                output,
+                fileFormat,
+                outputMode,
+                taintOptions);
         });
 
         // scorecard command

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FennecLabs.Cli.Commands.Taint;
 using FennecLabs.Instrumentation;
 using FennecLabs.Instrumentation.Output;
 using FennecLabs.Instrumentation.Result;
@@ -22,8 +23,22 @@ internal class InstrumentCommandHandler
         string? version,
         string output,
         string fileFormat,
-        OutputMode outputMode)
+        OutputMode outputMode,
+        TaintOptions? taintOptions = null)
     {
+        taintOptions ??= TaintOptions.Disabled;
+
+        // AC-1: when taint is disabled, the existing instrument workflow is completely
+        // unchanged — no taint-specific code path executes.
+        if (!taintOptions.Enabled)
+        {
+            if (!string.IsNullOrWhiteSpace(nuget))
+                return await InstrumentNuGetPackageAsync(nuget, version, output, fileFormat, outputMode);
+            return await InstrumentAssemblyAsync(filename!, output, fileFormat, outputMode);
+        }
+
+        // Taint analysis itself is implemented in later stories; for now, taint-enabled
+        // runs simply proceed through the existing instrument workflow unchanged.
         if (!string.IsNullOrWhiteSpace(nuget))
             return await InstrumentNuGetPackageAsync(nuget, version, output, fileFormat, outputMode);
         return await InstrumentAssemblyAsync(filename!, output, fileFormat, outputMode);
