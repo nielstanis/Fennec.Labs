@@ -6,6 +6,7 @@
     <Project Path="src/FennecLabs.Instrumentation/FennecLabs.Instrumentation.csproj" />
     <Project Path="src/FennecLabs.NuGet/FennecLabs.NuGet.csproj" />
     <Project Path="src/FennecLabs.Scorecard/FennecLabs.Scorecard.csproj" />
+    <Project Path="src/FennecLabs.TaintAnalysis/FennecLabs.TaintAnalysis.csproj" />
   </Folder>
   <Folder Name="/src/FennecLabs.Cli/">
     <Project Path="src/FennecLabs.Cli/Fennec.csproj" />
@@ -16,6 +17,7 @@
     <Project Path="test/FennecLabs.Contracts.Tests/FennecLabs.Contracts.Tests.csproj" />
     <Project Path="test/FennecLabs.DotNetCli.Tests/FennecLabs.DotNetCli.Tests.csproj" />
     <Project Path="test/FennecLabs.Instrumentation.Tests/FennecLabs.Instrumentation.Tests.csproj" />
+    <Project Path="test/FennecLabs.TaintAnalysis.Tests/FennecLabs.TaintAnalysis.Tests.csproj" />
     <Project Path="test/FennecLabs.TestUtilities/FennecLabs.TestUtilities.csproj" />
   </Folder>
   <Folder Name="/test/TestProjects/">

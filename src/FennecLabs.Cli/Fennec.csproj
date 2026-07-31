@@ -23,6 +23,7 @@
     <ProjectReference Include="..\FennecLabs.Instrumentation\FennecLabs.Instrumentation.csproj" />
     <ProjectReference Include="..\FennecLabs.AssemblyDiff\FennecLabs.AssemblyDiff.csproj" />
     <ProjectReference Include="..\FennecLabs.Contracts\FennecLabs.Contracts.csproj" />
+    <ProjectReference Include="..\FennecLabs.TaintAnalysis\FennecLabs.TaintAnalysis.csproj" />
   </ItemGroup>
 
   <ItemGroup>

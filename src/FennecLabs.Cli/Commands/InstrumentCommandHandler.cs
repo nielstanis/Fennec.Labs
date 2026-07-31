@@ -1,8 +1,14 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using FennecLabs.Cli.Commands.Taint;
+using FennecLabs.Contracts;
 using FennecLabs.Instrumentation;
 using FennecLabs.Instrumentation.Output;
 using FennecLabs.Instrumentation.Result;
 using FennecLabs.NuGet;
+using FennecLabs.TaintAnalysis;
+using FennecLabs.TaintAnalysis.Models;
 using Spectre.Console;
 
 namespace FennecLabs.Cli.Commands;
@@ -22,22 +28,88 @@ internal class InstrumentCommandHandler
         string? version,
         string output,
         string fileFormat,
-        OutputMode outputMode)
+        OutputMode outputMode,
+        TaintOptions? taintOptions = null)
     {
+        taintOptions ??= TaintOptions.Disabled;
+
         if (!string.IsNullOrWhiteSpace(nuget))
             return await InstrumentNuGetPackageAsync(nuget, version, output, fileFormat, outputMode);
-        return await InstrumentAssemblyAsync(filename!, output, fileFormat, outputMode);
+        return await InstrumentAssemblyAsync(filename!, output, fileFormat, outputMode, taintOptions);
     }
 
     private static async Task<int> InstrumentAssemblyAsync(
-        string filename, string output, string fileFormat, OutputMode outputMode)
+        string filename, string output, string fileFormat, OutputMode outputMode, TaintOptions taintOptions)
     {
-        if (!File.Exists(filename))
+        // When taint analysis is not requested, existing instrument behavior is completely
+        // unchanged: filename must point directly at an assembly file.
+        if (!taintOptions.Enabled)
         {
-            Console.Error.WriteLine($"Assembly file not found: {filename}");
+            if (!File.Exists(filename))
+            {
+                Console.Error.WriteLine($"Assembly file not found: {filename}");
+                return 1;
+            }
+
+            return await InstrumentSingleAssemblyAsync(filename, output, fileFormat, outputMode);
+        }
+
+        IReadOnlyList<string> resolvedDlls;
+        try
+        {
+            resolvedDlls = BuildGraphReader.Resolve(filename);
+        }
+        catch (BuildOutputNotFoundException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+        catch (ArgumentException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
             return 1;
         }
 
+        TaintPolicy policy;
+        try
+        {
+            policy = TaintPolicyLoader.Load(taintOptions.PolicyPath);
+        }
+        catch (TaintPolicyValidationException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
+        }
+
+        var exitCode = 0;
+        foreach (var dllPath in resolvedDlls)
+        {
+            if (!File.Exists(dllPath))
+            {
+                Console.Error.WriteLine($"Assembly file not found: {dllPath}");
+                exitCode = 1;
+                continue;
+            }
+
+            var instrumentExitCode = await InstrumentSingleAssemblyAsync(dllPath, output, fileFormat, outputMode);
+            if (instrumentExitCode != 0)
+            {
+                exitCode = instrumentExitCode;
+                continue;
+            }
+
+            var taintExitCode = await WriteTaintArtifactAsync(
+                dllPath, filename, output, outputMode, taintOptions, policy);
+            if (taintExitCode != 0)
+                exitCode = taintExitCode;
+        }
+
+        return exitCode;
+    }
+
+    private static async Task<int> InstrumentSingleAssemblyAsync(
+        string filename, string output, string fileFormat, OutputMode outputMode)
+    {
         if (outputMode == OutputMode.Human)
             AnsiConsole.MarkupLine($"[dim]Instrumenting {Markup.Escape(filename)}…[/]");
 
@@ -61,6 +133,67 @@ internal class InstrumentCommandHandler
         await writer.WriteOutputAsync(result);
         AnsiConsole.MarkupLine($"[dim]Output written to[/] {Markup.Escape(instrumentOutput)}/");
         return 0;
+    }
+
+    private static async Task<int> WriteTaintArtifactAsync(
+        string dllPath,
+        string originalInputPath,
+        string output,
+        OutputMode outputMode,
+        TaintOptions taintOptions,
+        TaintPolicy policy)
+    {
+        var options = new TaintOptionsInfo
+        {
+            MaxDepth = taintOptions.MaxDepth,
+            LlmHandoff = taintOptions.LlmHandoff,
+            IncludeThirdParty = taintOptions.IncludeThirdParty,
+            SecondPartyPrefixes = taintOptions.SecondPartyPrefixes,
+        };
+
+        var envelope = TaintArtifactBuilder.Build(
+            policy,
+            dllPath,
+            Environment.CurrentDirectory,
+            ProducerVersion.Current,
+            options,
+            projectPath: originalInputPath);
+
+        var json = JsonSerializer.Serialize(envelope, ContractJsonOptions.Default);
+
+        var scope = Path.GetFileNameWithoutExtension(dllPath);
+        var runId = ComputeRunId(dllPath, policy, taintOptions);
+        var taintDir = OutputCache.TaintDir(output, scope, runId);
+        var resultPath = Path.Combine(taintDir, "result.json");
+        await OutputCache.WriteAsync(resultPath, json);
+
+        if (outputMode == OutputMode.Json)
+            Console.WriteLine(json);
+        else
+            AnsiConsole.MarkupLine($"[dim]Taint artifact written to[/] {Markup.Escape(resultPath)}");
+
+        return 0;
+    }
+
+    /// <summary>
+    /// Deterministic cache key for a taint run, combining assembly identity, policy identity, and
+    /// options. A placeholder ahead of the full sha256(assembly-identity + policy-version +
+    /// options-fingerprint) scheme described in the taint analysis architecture.
+    /// </summary>
+    private static string ComputeRunId(string dllPath, TaintPolicy policy, TaintOptions taintOptions)
+    {
+        var fingerprint = string.Join(
+            "|",
+            dllPath,
+            policy.PolicyId,
+            policy.SchemaVersion,
+            taintOptions.MaxDepth,
+            taintOptions.LlmHandoff,
+            taintOptions.IncludeThirdParty,
+            string.Join(",", taintOptions.SecondPartyPrefixes));
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(fingerprint));
+        return Convert.ToHexStringLower(hash)[..12];
     }
 
     private async Task<int> InstrumentNuGetPackageAsync(
