@@ -1,0 +1,312 @@
+{
+  "$schema": "fennec.taint.policy.v1",
+  "schemaVersion": "1.0.0",
+  "policyId": "default-v1",
+  "rules": [
+    {
+      "id": "src-http-query",
+      "kind": "source",
+      "assembly": "Microsoft.AspNetCore.Http",
+      "typeName": "Microsoft.AspNetCore.Http.IQueryCollection",
+      "memberName": "get_Item",
+      "category": "network-input",
+      "confidence": 1.0,
+      "description": "HTTP query string parameter — user-controlled input"
+    },
+    {
+      "id": "src-http-form",
+      "kind": "source",
+      "assembly": "Microsoft.AspNetCore.Http",
+      "typeName": "Microsoft.AspNetCore.Http.HttpRequest",
+      "memberName": "get_Form",
+      "category": "network-input",
+      "confidence": 1.0,
+      "description": "HTTP form body — user-controlled input"
+    },
+    {
+      "id": "src-http-headers",
+      "kind": "source",
+      "assembly": "Microsoft.AspNetCore.Http",
+      "typeName": "Microsoft.AspNetCore.Http.HttpRequest",
+      "memberName": "get_Headers",
+      "category": "network-input",
+      "confidence": 0.9,
+      "description": "HTTP request headers — user-controlled input"
+    },
+    {
+      "id": "src-file-read-alltext",
+      "kind": "source",
+      "assembly": "System.Runtime",
+      "typeName": "System.IO.File",
+      "memberName": "ReadAllText",
+      "category": "file-input",
+      "confidence": 0.9,
+      "description": "File contents read from disk — potentially untrusted"
+    },
+    {
+      "id": "src-file-open-read",
+      "kind": "source",
+      "assembly": "System.Runtime",
+      "typeName": "System.IO.File",
+      "memberName": "OpenRead",
+      "category": "file-input",
+      "confidence": 0.8,
+      "description": "File stream opened for reading — potentially untrusted"
+    },
+    {
+      "id": "src-stream-reader-readtoend",
+      "kind": "source",
+      "assembly": "System.Runtime",
+      "typeName": "System.IO.StreamReader",
+      "memberName": "ReadToEnd",
+      "category": "file-input",
+      "confidence": 0.8,
+      "description": "Stream contents read to end — potentially untrusted"
+    },
+    {
+      "id": "src-env-var",
+      "kind": "source",
+      "assembly": "System.Runtime",
+      "typeName": "System.Environment",
+      "memberName": "GetEnvironmentVariable",
+      "category": "environment",
+      "confidence": 0.9,
+      "description": "Environment variable — potentially attacker-influenced in some threat models"
+    },
+    {
+      "id": "src-env-cmdline-args",
+      "kind": "source",
+      "assembly": "System.Runtime",
+      "typeName": "System.Environment",
+      "memberName": "GetCommandLineArgs",
+      "category": "environment",
+      "confidence": 0.9,
+      "description": "Command line arguments — attacker-influenced in some threat models"
+    },
+    {
+      "id": "src-json-deserialize",
+      "kind": "source",
+      "assembly": "System.Text.Json",
+      "typeName": "System.Text.Json.JsonSerializer",
+      "memberName": "Deserialize",
+      "category": "deserialization",
+      "confidence": 0.85,
+      "description": "JSON deserialization of external payload"
+    },
+    {
+      "id": "src-xml-deserialize",
+      "kind": "source",
+      "assembly": "System.Xml",
+      "typeName": "System.Xml.Serialization.XmlSerializer",
+      "memberName": "Deserialize",
+      "category": "deserialization",
+      "confidence": 0.85,
+      "description": "XML deserialization of external payload"
+    },
+    {
+      "id": "src-binary-formatter-deserialize",
+      "kind": "source",
+      "assembly": "System.Runtime.Serialization.Formatters",
+      "typeName": "System.Runtime.Serialization.Formatters.Binary.BinaryFormatter",
+      "memberName": "Deserialize",
+      "category": "deserialization",
+      "confidence": 1.0,
+      "description": "Binary deserialization of external payload — high-risk gadget surface"
+    },
+    {
+      "id": "src-sqldatareader-getstring",
+      "kind": "source",
+      "assembly": "System.Data.Common",
+      "typeName": "System.Data.Common.DbDataReader",
+      "memberName": "GetString",
+      "category": "database-read",
+      "confidence": 0.6,
+      "description": "Database column value read as string — may carry stored untrusted data"
+    },
+    {
+      "id": "src-dbdatareader-indexer",
+      "kind": "source",
+      "assembly": "System.Data.Common",
+      "typeName": "System.Data.Common.DbDataReader",
+      "memberName": "get_Item",
+      "category": "database-read",
+      "confidence": 0.6,
+      "description": "Database column value read via indexer — may carry stored untrusted data"
+    },
+    {
+      "id": "snk-sql-cmd-ctor",
+      "kind": "sink",
+      "assembly": "System.Data.Common",
+      "typeName": "System.Data.Common.DbCommand",
+      "memberName": ".ctor",
+      "argIndices": [0],
+      "category": "sql-injection",
+      "severity": "high",
+      "description": "Database command constructor — tainted first argument is SQL injection"
+    },
+    {
+      "id": "snk-sql-commandtext-setter",
+      "kind": "sink",
+      "assembly": "System.Data.Common",
+      "typeName": "System.Data.Common.DbCommand",
+      "memberName": "set_CommandText",
+      "argIndices": [0],
+      "category": "sql-injection",
+      "severity": "high",
+      "description": "DbCommand.CommandText setter — tainted value is SQL injection"
+    },
+    {
+      "id": "snk-process-start",
+      "kind": "sink",
+      "assembly": "System.Diagnostics.Process",
+      "typeName": "System.Diagnostics.Process",
+      "memberName": "Start",
+      "argIndices": [0],
+      "category": "command-injection",
+      "severity": "critical",
+      "description": "Process.Start with user-controlled path or argument"
+    },
+    {
+      "id": "snk-processstartinfo-filename-setter",
+      "kind": "sink",
+      "assembly": "System.Diagnostics.Process",
+      "typeName": "System.Diagnostics.ProcessStartInfo",
+      "memberName": "set_FileName",
+      "argIndices": [0],
+      "category": "command-injection",
+      "severity": "critical",
+      "description": "ProcessStartInfo.FileName setter — tainted value is command injection"
+    },
+    {
+      "id": "snk-file-open",
+      "kind": "sink",
+      "assembly": "System.Runtime",
+      "typeName": "System.IO.File",
+      "memberName": "Open",
+      "argIndices": [0],
+      "category": "path-traversal",
+      "severity": "high",
+      "description": "File.Open with tainted path — path traversal risk"
+    },
+    {
+      "id": "snk-file-readalltext",
+      "kind": "sink",
+      "assembly": "System.Runtime",
+      "typeName": "System.IO.File",
+      "memberName": "ReadAllText",
+      "argIndices": [0],
+      "category": "path-traversal",
+      "severity": "medium",
+      "description": "File.ReadAllText with tainted path — path traversal risk"
+    },
+    {
+      "id": "snk-directory-getfiles",
+      "kind": "sink",
+      "assembly": "System.Runtime",
+      "typeName": "System.IO.Directory",
+      "memberName": "GetFiles",
+      "argIndices": [0],
+      "category": "path-traversal",
+      "severity": "medium",
+      "description": "Directory.GetFiles with tainted path — path traversal risk"
+    },
+    {
+      "id": "snk-http-response-write",
+      "kind": "sink",
+      "assembly": "Microsoft.AspNetCore.Http.Abstractions",
+      "typeName": "Microsoft.AspNetCore.Http.HttpResponse",
+      "memberName": "WriteAsync",
+      "argIndices": [0],
+      "category": "xss",
+      "severity": "high",
+      "description": "HttpResponse.WriteAsync with tainted content — reflected XSS risk"
+    },
+    {
+      "id": "snk-htmltextwriter-write",
+      "kind": "sink",
+      "assembly": "System.Web",
+      "typeName": "System.Web.UI.HtmlTextWriter",
+      "memberName": "Write",
+      "argIndices": [0],
+      "category": "xss",
+      "severity": "high",
+      "description": "HtmlTextWriter.Write with tainted content — XSS risk"
+    },
+    {
+      "id": "snk-httpclient-getasync",
+      "kind": "sink",
+      "assembly": "System.Net.Http",
+      "typeName": "System.Net.Http.HttpClient",
+      "memberName": "GetAsync",
+      "argIndices": [0],
+      "category": "ssrf",
+      "severity": "high",
+      "description": "HttpClient.GetAsync with tainted URL — server-side request forgery risk"
+    },
+    {
+      "id": "snk-webclient-downloadstring",
+      "kind": "sink",
+      "assembly": "System.Net.WebClient",
+      "typeName": "System.Net.WebClient",
+      "memberName": "DownloadString",
+      "argIndices": [0],
+      "category": "ssrf",
+      "severity": "high",
+      "description": "WebClient.DownloadString with tainted URL — server-side request forgery risk"
+    },
+    {
+      "id": "snk-ilogger-log",
+      "kind": "sink",
+      "assembly": "Microsoft.Extensions.Logging.Abstractions",
+      "typeName": "Microsoft.Extensions.Logging.ILogger",
+      "memberName": "Log",
+      "argIndices": [],
+      "category": "log-injection",
+      "severity": "low",
+      "description": "ILogger.Log* with tainted message — log injection / forging risk"
+    },
+    {
+      "id": "snk-console-write",
+      "kind": "sink",
+      "assembly": "System.Console",
+      "typeName": "System.Console",
+      "memberName": "Write",
+      "argIndices": [0],
+      "category": "log-injection",
+      "severity": "low",
+      "description": "Console.Write* with tainted content — low-severity log injection"
+    },
+    {
+      "id": "san-html-encode",
+      "kind": "sanitizer",
+      "assembly": "System.Web",
+      "typeName": "System.Web.HttpUtility",
+      "memberName": "HtmlEncode",
+      "description": "HTML-encodes output, removes XSS risk"
+    },
+    {
+      "id": "san-parameterized-sql",
+      "kind": "sanitizer",
+      "assembly": "System.Data.Common",
+      "typeName": "System.Data.Common.DbParameterCollection",
+      "memberName": "Add",
+      "description": "Adding a parameter to a command's parameter collection neutralizes SQL injection risk for that value"
+    },
+    {
+      "id": "prop-string-format",
+      "kind": "propagator",
+      "assembly": "System.Runtime",
+      "typeName": "System.String",
+      "memberName": "Format",
+      "description": "String.Format propagates taint from any format argument"
+    },
+    {
+      "id": "prop-string-concat",
+      "kind": "propagator",
+      "assembly": "System.Runtime",
+      "typeName": "System.String",
+      "memberName": "Concat",
+      "description": "String.Concat propagates taint from any concatenated argument"
+    }
+  ]
+}

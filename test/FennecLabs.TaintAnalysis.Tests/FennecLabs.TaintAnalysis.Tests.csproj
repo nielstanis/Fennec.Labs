@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -19,14 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FennecLabs.Cli\Fennec.csproj" />
-    <ProjectReference Include="..\FennecLabs.TestUtilities\FennecLabs.TestUtilities.csproj" />
+    <ProjectReference Include="..\..\src\FennecLabs.TaintAnalysis\FennecLabs.TaintAnalysis.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <TestProject Include="..\TestProjects\BasicConsole\BasicConsole.csproj" />
-  </ItemGroup>
-
-  <Import Project="..\FennecLabs.TestUtilities\TestProjectRefs.targets" />
 
 </Project>
