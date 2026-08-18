@@ -1,7 +1,6 @@
 using System.CommandLine;
 using FennecLabs.Cli;
 using FennecLabs.Cli.Commands;
-using FennecLabs.Cli.Commands.Taint;
 using FennecLabs.NuGet;
 using FennecLabs.Scorecard;
 
@@ -53,50 +52,12 @@ class Program
             Description = "File output format: fxt or json (default: fxt)",
             DefaultValueFactory = _ => "fxt"
         };
-        var taintOption = new Option<bool>("--taint")
-        {
-            Description = "Enable taint analysis"
-        };
-        var taintPolicyOption = new Option<string>("--taint-policy")
-        {
-            Description = "Path to a custom taint policy JSON file merged with the built-in policy"
-        };
-        var taintMaxDepthOption = new Option<int>("--taint-max-depth")
-        {
-            Description = "Max call-chain depth for taint propagation (default: 8)",
-            DefaultValueFactory = _ => 8
-        };
-        var taintTimeoutOption = new Option<int>("--taint-timeout")
-        {
-            Description = "Taint analysis timeout in seconds (default: 120)",
-            DefaultValueFactory = _ => 120
-        };
-        var taintLlmHandoffOption = new Option<bool>("--taint-llm-handoff")
-        {
-            Description = "Emit an LLM handoff artifact alongside the taint result"
-        };
-        var taintIncludeThirdPartyOption = new Option<bool>("--taint-include-third-party")
-        {
-            Description = "Walk IL of third-party NuGet assemblies during taint analysis"
-        };
-        var taintSecondPartyPrefixOption = new Option<string[]>("--taint-second-party-prefix")
-        {
-            Description = "Package/namespace prefix treated as second-party (repeatable)",
-            AllowMultipleArgumentsPerToken = true,
-        };
 
         var instrumentCommand = new Command("instrument", "Instrument assembly files or NuGet packages");
         instrumentCommand.Options.Add(filenameOption);
         instrumentCommand.Options.Add(nugetOption);
         instrumentCommand.Options.Add(versionOption);
         instrumentCommand.Options.Add(fileFormatOption);
-        instrumentCommand.Options.Add(taintOption);
-        instrumentCommand.Options.Add(taintPolicyOption);
-        instrumentCommand.Options.Add(taintMaxDepthOption);
-        instrumentCommand.Options.Add(taintTimeoutOption);
-        instrumentCommand.Options.Add(taintLlmHandoffOption);
-        instrumentCommand.Options.Add(taintIncludeThirdPartyOption);
-        instrumentCommand.Options.Add(taintSecondPartyPrefixOption);
         instrumentCommand.SetAction(async (ParseResult parseResult) =>
         {
             var filename = parseResult.GetValue(filenameOption);
@@ -109,18 +70,6 @@ class Program
                 return 1;
             }
 
-            var taintEnabled = parseResult.GetValue(taintOption);
-            var taintOptions = taintEnabled
-                ? new TaintOptions(
-                    Enabled: true,
-                    PolicyPath: parseResult.GetValue(taintPolicyOption),
-                    MaxDepth: parseResult.GetValue(taintMaxDepthOption),
-                    TimeoutSeconds: parseResult.GetValue(taintTimeoutOption),
-                    LlmHandoff: parseResult.GetValue(taintLlmHandoffOption),
-                    IncludeThirdParty: parseResult.GetValue(taintIncludeThirdPartyOption),
-                    SecondPartyPrefixes: parseResult.GetValue(taintSecondPartyPrefixOption) ?? [])
-                : TaintOptions.Disabled;
-
             var handler = new InstrumentCommandHandler(new NuGetService());
             return await handler.ExecuteAsync(
                 filename,
@@ -128,8 +77,7 @@ class Program
                 parseResult.GetValue(versionOption),
                 parseResult.GetValue(globalOutputOption) ?? ".fennec",
                 parseResult.GetValue(fileFormatOption) ?? "fxt",
-                ResolveOutputMode(parseResult.GetValue(globalJsonOption)),
-                taintOptions);
+                ResolveOutputMode(parseResult.GetValue(globalJsonOption)));
         });
 
         // scorecard command

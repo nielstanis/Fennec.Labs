@@ -31,13 +31,6 @@ public class OutputCacheTests
     }
 
     [Fact]
-    public void TaintDir_BuildsCorrectPath()
-    {
-        var expected = Path.Combine(".fennec", "instrument", "MyApp", "taint", "abc123");
-        Assert.Equal(expected, OutputCache.TaintDir(".fennec", "MyApp", "abc123"));
-    }
-
-    [Fact]
     public async Task WriteAsync_ThenExists_ReturnsTrue()
     {
         var path = UniqueTempPath("result.json");
