@@ -14,9 +14,6 @@ internal static class OutputCache
     internal static string DependenciesDir(string root, string projectName, string timestamp) =>
         Path.Combine(root, "dependencies", projectName, timestamp);
 
-    internal static string TaintDir(string root, string scope, string runId) =>
-        Path.Combine(root, "instrument", scope, "taint", runId);
-
     internal static bool Exists(string path) => File.Exists(path);
 
     internal static string? TryLoad(string path) =>
