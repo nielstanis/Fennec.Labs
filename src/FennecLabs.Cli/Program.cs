@@ -14,14 +14,14 @@ class Program
 
         var globalJsonOption = new Option<bool>("--json", "-j")
         {
-            Description = "Write output as JSON",
+            Description = "Write output as JSON instead of the human-readable console view (suppresses progress output)",
             Recursive = true,
         };
         rootCommand.Options.Add(globalJsonOption);
 
         var globalOutputOption = new Option<string>("--output", "-o")
         {
-            Description = "Root folder for all file output (default: .fennec)",
+            Description = "Root folder for all file output: cached results, reports, instrumentation dumps (default: .fennec)",
             DefaultValueFactory = _ => ".fennec",
             Recursive = true,
         };
@@ -29,7 +29,7 @@ class Program
 
         var globalNoCacheOption = new Option<bool>("--no-cache", "-C")
         {
-            Description = "Bypass cached results and force a fresh run",
+            Description = "Bypass any cached result.json for this input and force a fresh run",
             Recursive = true,
         };
         rootCommand.Options.Add(globalNoCacheOption);
@@ -37,23 +37,24 @@ class Program
         // instrument command
         var filenameOption = new Option<string>("--filename", "-f")
         {
-            Description = "Path to the assembly file to instrument"
+            Description = "Path to a local assembly file (.dll) to instrument. Required unless --nuget is used."
         };
         var nugetOption = new Option<string>("--nuget", "-n")
         {
-            Description = "NuGet package ID to download and instrument"
+            Description = "NuGet package ID to download and instrument; all library DLLs in the package are analyzed. Required unless --filename is used."
         };
         var versionOption = new Option<string>("--version", "-v")
         {
-            Description = "Version of the NuGet package (optional, uses latest if not specified)"
+            Description = "Version of the NuGet package to use with --nuget (optional, uses latest if not specified)"
         };
         var fileFormatOption = new Option<string>("--file-format", "-F")
         {
-            Description = "File output format: fxt or json (default: fxt)",
+            Description = "Output file format: fxt or json (default: fxt). Ignored when --json is used (writes to stdout instead of files).",
             DefaultValueFactory = _ => "fxt"
         };
 
-        var instrumentCommand = new Command("instrument", "Instrument assembly files or NuGet packages");
+        var instrumentCommand = new Command("instrument",
+            "Extract IL-level method invocations from a local assembly or NuGet package. See docs/commands/instrument.md.");
         instrumentCommand.Options.Add(filenameOption);
         instrumentCommand.Options.Add(nugetOption);
         instrumentCommand.Options.Add(versionOption);
@@ -83,14 +84,15 @@ class Program
         // scorecard command
         var projectPathOption = new Option<string>("--project", "-p")
         {
-            Description = "Path to the .csproj file"
+            Description = "Path to the .csproj file to analyze (required)"
         };
         var reportFormatOption = new Option<string>("--report-format", "-r")
         {
-            Description = "Generate a report in the specified format(s): html, md, or html,md"
+            Description = "Generate a report in the specified format(s), co-located with result.json: html, md, or html,md"
         };
 
-        var scorecardCommand = new Command("scorecard", "Get security scorecards for packages in a project");
+        var scorecardCommand = new Command("scorecard",
+            "Fetch OpenSSF Scorecard results for a project's direct and transitive NuGet dependencies. See docs/commands/scorecard.md.");
         scorecardCommand.Options.Add(projectPathOption);
         scorecardCommand.Options.Add(reportFormatOption);
         scorecardCommand.SetAction(async (ParseResult parseResult) =>
@@ -106,10 +108,11 @@ class Program
         // dependencies command
         var dependenciesProjectPathOption = new Option<string>("--project", "-p")
         {
-            Description = "Path to the .csproj file"
+            Description = "Path to the .csproj file to analyze (required)"
         };
 
-        var dependenciesCommand = new Command("dependencies", "Emit a normalized dependency graph artifact for a project");
+        var dependenciesCommand = new Command("dependencies",
+            "Emit a normalized, canonical dependency graph artifact for a project's direct and transitive NuGet dependencies. See docs/commands/dependencies.md.");
         dependenciesCommand.Options.Add(dependenciesProjectPathOption);
         dependenciesCommand.SetAction(async (ParseResult parseResult) =>
         {
@@ -123,21 +126,21 @@ class Program
         // compare command
         var compareNugetOption = new Option<string>("--nuget", "-n")
         {
-            Description = "NuGet package ID to compare"
+            Description = "NuGet package ID to compare. Required unless --file is used; mutually exclusive with --file."
         };
         var compareVersionOption = new Option<string>("--version", "-v")
         {
-            Description = "Version to compare (optional, uses latest if not specified)"
+            Description = "Version to compare against latest, used with --nuget (optional, compares the two most recent published versions if not specified)"
         };
         var compareFileOption = new Option<string[]>("--file", "-f")
         {
-            Description = "Two .dll or .nupkg files to compare",
+            Description = "Two local .dll or .nupkg files to compare directly (exactly two paths, no NuGet lookup, not cached). Mutually exclusive with --nuget.",
             Arity = new ArgumentArity(2, 2),
             AllowMultipleArgumentsPerToken = true,
         };
 
         var compareCommand = new Command("compare",
-            "Compare assemblies between two NuGet versions or two local .dll/.nupkg files");
+            "Diff assemblies structurally between two NuGet package versions, or between two local .dll/.nupkg files. See docs/commands/compare.md.");
         compareCommand.Options.Add(compareNugetOption);
         compareCommand.Options.Add(compareVersionOption);
         compareCommand.Options.Add(compareFileOption);
@@ -180,19 +183,19 @@ class Program
         // reproduce command
         var reproduceFilenameOption = new Option<string>("--filename", "-f")
         {
-            Description = "Path to the .nupkg file to compare"
+            Description = "Path to the local .nupkg file to compare. Required unless --directory is used."
         };
         var reproduceDirOption = new Option<string>("--directory", "-d")
         {
-            Description = "Path to a build output directory of .dll files to compare"
+            Description = "Path to a build output directory of .dll files to compare instead of a .nupkg. Required unless --filename is used."
         };
         var reproduceTfmOption = new Option<string>("--tfm", "-t")
         {
-            Description = "Target framework moniker (e.g. net8.0); derived from directory name if omitted"
+            Description = "Target framework moniker (e.g. net8.0) for --directory; auto-derived from the directory name/single TFM subdir when omitted, or prompted for interactively when ambiguous. Requires --directory."
         };
         var reproduceNugetOption = new Option<string>("--nuget", "-n")
         {
-            Description = "NuGet package ID to compare against",
+            Description = "NuGet package ID to compare against (required)",
             Required = true,
         };
         var reproduceVersionOption = new Option<string>("--version", "-v")
@@ -200,7 +203,8 @@ class Program
             Description = "Version to compare against (optional, uses latest if not specified)"
         };
 
-        var reproduceCommand = new Command("reproduce", "Compare a local .nupkg file or directory with a NuGet package from the feed");
+        var reproduceCommand = new Command("reproduce",
+            "Verify a local .nupkg or build output directory reproduces the published NuGet.org package. See docs/commands/reproduce.md.");
         reproduceCommand.Options.Add(reproduceFilenameOption);
         reproduceCommand.Options.Add(reproduceDirOption);
         reproduceCommand.Options.Add(reproduceTfmOption);
@@ -239,7 +243,8 @@ class Program
         });
 
         // feeds command
-        var feedsCommand = new Command("feeds", "Manage NuGet feed sources");
+        var feedsCommand = new Command("feeds",
+            "Manage NuGet feed sources used to resolve packages for instrument/compare/reproduce. See docs/commands/feeds.md.");
 
         var feedsListCommand = new Command("list", "List configured NuGet feeds");
         feedsListCommand.SetAction(async (ParseResult parseResult) =>
@@ -250,9 +255,9 @@ class Program
         });
         feedsCommand.Subcommands.Add(feedsListCommand);
 
-        var feedAddNameOption = new Option<string>("--name", "-n") { Description = "Feed name", Required = true };
-        var feedAddSourceOption = new Option<string>("--source", "-s") { Description = "Feed source URL", Required = true };
-        var feedAddDefaultOption = new Option<bool>("--default", "-d") { Description = "Set as default feed" };
+        var feedAddNameOption = new Option<string>("--name", "-n") { Description = "Name to register the feed under (required)", Required = true };
+        var feedAddSourceOption = new Option<string>("--source", "-s") { Description = "Feed source URL, a NuGet v3 index endpoint (required)", Required = true };
+        var feedAddDefaultOption = new Option<bool>("--default", "-d") { Description = "Mark this feed as the default used for package resolution" };
 
         var feedsAddCommand = new Command("add", "Add a NuGet feed source");
         feedsAddCommand.Options.Add(feedAddNameOption);
@@ -269,7 +274,7 @@ class Program
         });
         feedsCommand.Subcommands.Add(feedsAddCommand);
 
-        var feedRemoveNameOption = new Option<string>("--name", "-n") { Description = "Name of the feed to remove", Required = true };
+        var feedRemoveNameOption = new Option<string>("--name", "-n") { Description = "Name of the feed to remove (required)", Required = true };
 
         var feedsRemoveCommand = new Command("remove", "Remove a NuGet feed source");
         feedsRemoveCommand.Options.Add(feedRemoveNameOption);
