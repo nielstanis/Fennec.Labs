@@ -294,6 +294,60 @@ class Program
         rootCommand.Subcommands.Add(reproduceCommand);
         rootCommand.Subcommands.Add(feedsCommand);
 
+        rootCommand.WithExamples(
+            "fennec instrument --nuget Newtonsoft.Json",
+            "fennec compare --nuget Newtonsoft.Json --version 12.0.3",
+            "fennec reproduce --filename ./bin/Release/MyLib.1.0.0.nupkg --nuget MyLib",
+            "fennec scorecard --project src/MyApp/MyApp.csproj --report-format html,md",
+            "fennec dependencies --project src/MyApp/MyApp.csproj --json",
+            "fennec feeds list");
+
+        instrumentCommand.WithExamples(
+            "fennec instrument --filename path/to/MyLib.dll",
+            "fennec instrument --nuget Newtonsoft.Json",
+            "fennec instrument --nuget Newtonsoft.Json --version 13.0.3 --file-format json",
+            "fennec instrument --filename path/to/MyLib.dll --json");
+
+        compareCommand.WithExamples(
+            "fennec compare --nuget Newtonsoft.Json",
+            "fennec compare --nuget Newtonsoft.Json --version 12.0.3",
+            "fennec compare --file old.dll new.dll",
+            "fennec compare --file old.nupkg new.nupkg",
+            "fennec compare --nuget Newtonsoft.Json --json --no-cache");
+
+        reproduceCommand.WithExamples(
+            "fennec reproduce --filename ./bin/Release/MyLib.1.0.0.nupkg --nuget MyLib",
+            "fennec reproduce --filename ./bin/Release/MyLib.1.0.0.nupkg --nuget MyLib --version 1.0.0",
+            "fennec reproduce --directory ./bin/Release/net8.0 --nuget MyLib",
+            "fennec reproduce --directory ./bin/Release --tfm net8.0 --nuget MyLib");
+
+        scorecardCommand.WithExamples(
+            "fennec scorecard --project src/MyApp/MyApp.csproj",
+            "fennec scorecard --project src/MyApp/MyApp.csproj --report-format html,md",
+            "fennec scorecard --project src/MyApp/MyApp.csproj --json");
+
+        dependenciesCommand.WithExamples(
+            "fennec dependencies --project src/MyApp/MyApp.csproj",
+            "fennec dependencies --project src/MyApp/MyApp.csproj --json");
+
+        feedsCommand.WithExamples(
+            "fennec feeds list",
+            "fennec feeds add --name MyFeed --source https://my.feed/v3/index.json",
+            "fennec feeds remove --name MyFeed");
+
+        feedsListCommand.WithExamples(
+            "fennec feeds list",
+            "fennec feeds list --json");
+
+        feedsAddCommand.WithExamples(
+            "fennec feeds add --name MyFeed --source https://my.feed/v3/index.json",
+            "fennec feeds add --name MyFeed --source https://my.feed/v3/index.json --default");
+
+        feedsRemoveCommand.WithExamples(
+            "fennec feeds remove --name MyFeed");
+
+        HelpExamples.Install(rootCommand);
+
         return await rootCommand.Parse(args).InvokeAsync();
     }
 
