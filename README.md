@@ -27,9 +27,29 @@ Or run from source:
 dotnet run --project src/FennecLabs.Cli -- <command> [options]
 ```
 
+## Documentation
+
+Full command reference — every option, output artifact, JSON schema, and edge case — lives in
+[`docs/`](docs/README.md):
+
+| Command | Docs |
+|---------|------|
+| `instrument` | [docs/commands/instrument.md](docs/commands/instrument.md) |
+| `compare` | [docs/commands/compare.md](docs/commands/compare.md) |
+| `reproduce` | [docs/commands/reproduce.md](docs/commands/reproduce.md) |
+| `scorecard` | [docs/commands/scorecard.md](docs/commands/scorecard.md) |
+| `dependencies` | [docs/commands/dependencies.md](docs/commands/dependencies.md) |
+| `feeds` | [docs/commands/feeds.md](docs/commands/feeds.md) |
+
+Output artifact layout and JSON schemas (including the canonical dashboard envelope used by
+`scorecard`/`dependencies`) are documented in [docs/output-schemas.md](docs/output-schemas.md).
+
+Run `fennec --help` or `fennec <command> --help` at any time for the authoritative,
+version-matched option list.
+
 ## Usage
 
-All commands accept these global options:
+<a id="global-options"></a>All commands accept these global options:
 
 | Option | Short | Description |
 |--------|-------|-------------|
