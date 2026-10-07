@@ -36,6 +36,10 @@ verdict never reaches the exit code:
 distinguishable in CI, mirroring the `diff`/`cmp` convention of separating "different" from "trouble".
 Errors take precedence over differences.
 
+In `--directory` mode, DLLs only present locally are ignored for the verdict: a build output directory
+normally also contains dependency assemblies that are not part of the package. DLLs the package ships but
+the local build lacks still yield `2`.
+
 A single helper `DllPipeline.ReproduceExitCode(identical, different, errors, onlyInLocal, onlyInFeed)` computes
 the code for both `--filename` and `--directory` modes and for cache hits (by reading the cached `summary`,
 `onlyInLocal`, `onlyInFeed`).
@@ -76,6 +80,17 @@ the code for both `--filename` and `--directory` modes and for cache hits (by re
 2. Cache path includes the hash; two different files for the same package/version get different paths.
 3. Cached result with `different > 0` yields exit 2.
 4. `dotnet test` green (offline: `--filter "Category!=Live"`).
+
+### Results (2026-10-07)
+
+- `dotnet build FennecLabs.slnx`: 0 warnings, 0 errors. Offline tests: all 213 in the `.slnx` pass; Scorecard.Tests 24/24.
+  NuGet.Tests has 2 failures, identical before this change: untagged network tests that hit the NuGet search
+  endpoint, which the sandbox proxy blocks (see FD-038, Live tagging).
+- Smoke against nuget.org with `Humanizer.Core`:
+  - local 2.14.1 vs feed 2.14.1 → `✓ Reproducible`, exit 0; rerun served from
+    `reproduce/Humanizer.Core/2.14.1/117be88dd74fbbef/result.json`, exit 0
+  - same file, no `--version` → resolved `feedVersion: "3.0.10"`, `✗ Not reproducible`, exit 2
+  - corrupt `.nupkg` → error, exit 1
 
 ## Related
 
