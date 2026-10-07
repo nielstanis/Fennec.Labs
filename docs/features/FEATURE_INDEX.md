@@ -8,7 +8,14 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
-| [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
+| [FD-035](FD-035_REPRODUCE_VERDICT_EXIT_CODES_AND_CACHE.md) | Reproduce verdict exit codes and artifact-aware cache | In Progress | Low | High |
+| [FD-036](FD-036_WIRE_FEEDS_INTO_PACKAGE_RESOLUTION.md) | Wire configured feeds into package resolution | Open | Medium | High |
+| [FD-037](FD-037_CLI_CORRECTNESS_HARDENING.md) | CLI correctness hardening for launch | Open | Medium | High |
+| [FD-038](FD-038_RELEASE_PACKAGING_AND_CI_HYGIENE.md) | Release packaging and CI hygiene | Open | Low-Medium | High |
+| [FD-040](FD-040_DOCS_TRUTH_PASS.md) | Docs truth pass and repo presentation | Open | Medium | High |
+| [FD-039](FD-039_SELF_VERIFYING_RELEASE.md) | Self-verifying release — SBOM, Scorecard, reproducible build | Open | Medium | Medium-High |
+| [FD-041](FD-041_ASSEMBLYDIFF_COVERAGE_GAPS.md) | AssemblyDiff coverage gaps — resources, static data, references, non-DLL content | Open | Medium | Medium |
+| [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open (design doc missing; defer until after launch) | High | Low |
 
 ## Completed
 
