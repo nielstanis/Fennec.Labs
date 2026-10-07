@@ -200,11 +200,11 @@ class Program
         };
         var reproduceVersionOption = new Option<string>("--version", "-v")
         {
-            Description = "Version to compare against (optional, uses latest if not specified)"
+            Description = "Version to compare against (optional, uses the latest published version, including prereleases, if not specified)"
         };
 
         var reproduceCommand = new Command("reproduce",
-            "Verify a local .nupkg or build output directory reproduces the published NuGet.org package. See docs/commands/reproduce.md.");
+            "Verify a local .nupkg or build output directory reproduces the published NuGet.org package. Exit codes: 0 reproducible, 1 error (or nothing to compare), 2 not reproducible. See docs/commands/reproduce.md.");
         reproduceCommand.Options.Add(reproduceFilenameOption);
         reproduceCommand.Options.Add(reproduceDirOption);
         reproduceCommand.Options.Add(reproduceTfmOption);

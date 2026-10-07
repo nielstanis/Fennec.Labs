@@ -67,6 +67,29 @@ public class NuGetService
         return metadata.Select(m => m.Identity.Version);
     }
 
+    /// <summary>
+    /// Resolves the concrete version that a download of <paramref name="version"/> would use:
+    /// the normalized form of an explicit version, or the latest listed version (prereleases included)
+    /// when <paramref name="version"/> is null or empty.
+    /// </summary>
+    public async Task<string> ResolveVersionAsync(
+        string packageId,
+        string? version,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrEmpty(version))
+        {
+            if (!NuGetVersion.TryParse(version, out var parsedVersion))
+                throw new ArgumentException($"Invalid version format: '{version}'");
+            return parsedVersion.ToNormalizedString();
+        }
+
+        var versions = await GetPackageVersionsAsync(packageId, includePrerelease: true, cancellationToken);
+        var latest = versions.OrderByDescending(v => v).FirstOrDefault()
+            ?? throw new InvalidOperationException($"Package '{packageId}' not found");
+        return latest.ToNormalizedString();
+    }
+
     public async Task<IPackageSearchMetadata?> GetPackageMetadataAsync(
         string packageId,
         string? version = null,
