@@ -54,11 +54,17 @@ internal class ReproduceCommandHandler
             if (!noCache && OutputCache.Exists(cachePath))
             {
                 var cached = OutputCache.TryLoad(cachePath)!;
+                var cachedExitCode = DllPipeline.ReproduceExitCodeFromJson(cached);
                 if (outputMode == OutputMode.Json)
+                {
                     Console.WriteLine(cached);
+                }
                 else
+                {
                     DllPipeline.RenderCachedResult(cached, cachePath);
-                return DllPipeline.ReproduceExitCodeFromJson(cached);
+                    RenderVerdict(cachedExitCode);
+                }
+                return cachedExitCode;
             }
 
             tempExtractPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
