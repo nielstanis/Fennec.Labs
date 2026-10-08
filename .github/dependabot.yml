@@ -13,3 +13,8 @@ updates:
       interval: daily
     cooldown:
       default-days: 7
+    groups:
+      # init and analyze must run the same version, so bump them together.
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
