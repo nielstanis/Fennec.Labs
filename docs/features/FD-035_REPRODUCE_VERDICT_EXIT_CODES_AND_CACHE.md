@@ -96,3 +96,16 @@ the code for both `--filename` and `--directory` modes and for cache hits (by re
 
 - FD-032, FD-034 — `reproduce --directory` and TFM resolution
 - FD-037 — remaining `reproduce`/`compare` correctness fixes (Windows path matching, `compare --version` wording)
+
+### `/fd-verify` results (2026-10-08, after proofread fix `4dc6fd1`)
+
+| # | Scenario | Result | Exit |
+|---|----------|--------|------|
+| 1 | Offline test suites | All pass except the 2 known NuGet search-endpoint tests (sandbox network) | — |
+| 2 | 2.14.1 vs 2.14.1, fresh then cached | `✓ Reproducible`; cached run shows summary + verdict | 0 / 0 |
+| 3 | Repacked nupkg with extra `lib/net6.0/Extra.dll` | New cache folder `3af708f4051be0f4`; "Only in local", `✗ Not reproducible` | 2 |
+| 4 | 2.13.14 local vs feed 2.14.1, fresh then cached | 3 different, `✗ Not reproducible` | 2 / 2 |
+| 5a | `--directory` with an extra dependency DLL (Spectre.Console.dll) | Local-only DLL listed but ignored, `✓ Reproducible` | 0 |
+| 5b | `--directory` with `Humanizer.dll` removed | "No matching DLL files found to compare." | 1 |
+| 6 | `-v 99.0.0` / `-v abc` / missing file | One-line error each | 1 / 1 / 1 |
+| 7 | `compare -n Humanizer.Core`, fresh then cached | 7 different (expected for compare) | 0 / 0 |
