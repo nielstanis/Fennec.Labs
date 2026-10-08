@@ -1,6 +1,7 @@
 # FD-035: Reproduce Verdict Exit Codes and Artifact-Aware Cache
 
-**Status:** In Progress
+**Status:** Complete
+**Completed:** 2026-10-08
 **Priority:** High (launch blocker)
 **Effort:** Low (2-4 hours)
 **Impact:** `fennec reproduce` becomes usable as a CI gate: a non-reproducible build fails the job, and a

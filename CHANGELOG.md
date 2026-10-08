@@ -19,11 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `reproduce --filename` no longer serves a stale cached verdict after the local `.nupkg` is rebuilt: the cache path is now `reproduce/<id>/<version>/<sha256-prefix>/result.json`, keyed on the local package hash; cached `reproduce` and `compare` runs return the same exit code as the original run instead of always `0` (FD-035)
 - Surface `dotnet list package` failures in the `scorecard` command: `GetPackageListAsync` now throws `InvalidOperationException` with the trimmed stderr when `dotnet` exits non-zero, and `ScorecardCommandHandler` prints the real error and exits 1 instead of misleadingly reporting "No packages found in the project." (FD-029)
 - Fix zip-slip path traversal in `NupkgHelper.ExtractAsync`: validate each archive entry resolves within the extraction root before writing; throw `InvalidOperationException` on traversal attempts from untrusted `.nupkg` files (FD-033)
 
 ### Changed
 
+- `reproduce` exit codes now reflect the verdict so it can gate CI: `0` reproducible, `1` error or nothing to compare (previously `0`), `2` not reproducible — any DLL differs or exists on one side only; in `--directory` mode local-only DLLs (build dependencies) are ignored. Without `--version` the latest published version (prereleases included) is resolved up front and reported as `feedVersion` instead of `"latest"`; JSON output gains `localSha256`; human output ends with a ✓/✗ verdict line (FD-035)
 - Commands now print full help after a missing-argument error: `instrument` and `compare` invoke subcommand help on mutual-exclusion failures; `reproduce`, `feeds add`, and `feeds remove` use `Required = true` for automatic System.CommandLine validation (FD-030)
 - Add short aliases for all options that previously had only long forms: `-C`/`--no-cache` (global), `-r`/`--report-format` (scorecard), `-f`/`--file` (compare), `-d`/`--default` (feeds add); all subcommand effective alias sets verified clash-free (FD-031)
 - Rename NuGet package ID from `FennecLabs` to `Fennec.Labs`; install command updated to `dotnet tool install --global Fennec.Labs` (FD-027)
