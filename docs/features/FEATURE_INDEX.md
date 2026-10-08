@@ -8,12 +8,19 @@ See `CLAUDE.md` for FD lifecycle stages and management guidelines.
 
 | FD | Title | Status | Effort | Priority |
 |----|-------|--------|--------|----------|
-| [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open | High | High |
+| [FD-036](FD-036_WIRE_FEEDS_INTO_PACKAGE_RESOLUTION.md) | Wire configured feeds into package resolution | Open | Medium | High |
+| [FD-037](FD-037_CLI_CORRECTNESS_HARDENING.md) | CLI correctness hardening for launch | Open | Medium | High |
+| [FD-038](FD-038_RELEASE_PACKAGING_AND_CI_HYGIENE.md) | Release packaging and CI hygiene | Open | Low-Medium | High |
+| [FD-040](FD-040_DOCS_TRUTH_PASS.md) | Docs truth pass and repo presentation | Open | Medium | High |
+| [FD-039](FD-039_SELF_VERIFYING_RELEASE.md) | Self-verifying release — SBOM, Scorecard, reproducible build | Open | Medium | Medium-High |
+| [FD-041](FD-041_ASSEMBLYDIFF_COVERAGE_GAPS.md) | AssemblyDiff coverage gaps — resources, static data, references, non-DLL content | Open | Medium | Medium |
+| [FD-013](FD-013_FENNECLABS_MCP_SERVER.md) | FennecLabs.Mcp — MCP Server exposing Fennec capabilities as AI agent tools | Open (design doc missing; defer until after launch) | High | Low |
 
 ## Completed
 
 | FD | Title | Completed | Notes |
 |----|-------|-----------|-------|
+| [FD-035](archive/FD-035_REPRODUCE_VERDICT_EXIT_CODES_AND_CACHE.md) | Reproduce verdict exit codes and artifact-aware cache | 2026-10-08 | `reproduce` exits 0 reproducible / 1 error / 2 not reproducible (directory mode ignores local-only DLLs); cache keyed on local `.nupkg` SHA-256; "latest" resolved to a concrete `feedVersion`; `localSha256` in JSON; cached `compare`/`reproduce` runs return the original exit code; 11 new tests |
 | [FD-009](archive/FD-009_MISSING_IL_OPCODES_INSTRUMENTATION.md) | Capture Missing IL Opcodes in Instrumentation | 2026-07-16 | Added `Ldftn`, `Ldvirtftn`, `Jmp` to the opcode filter in `AssemblyAnalyzer.Analyze` so delegate construction and tail calls appear in the invocation graph; 2 new tests |
 | [FD-029](archive/FD-029_SURFACE_DOTNET_LIST_ERROR.md) | Surface dotnet list package stderr errors in scorecard command | 2026-06-21 | `GetPackageListAsync` throws `InvalidOperationException` with trimmed stderr on non-zero exit; `ScorecardCommandHandler` surfaces the real error and exits 1 instead of printing "No packages found" |
 | [FD-034](archive/FD-034_SMART_TFM_RESOLUTION.md) | Smart TFM Resolution — Interactive Selection and Strict No-TFM Error | 2026-06-02 | Interactive `SelectionPrompt` for multi-TFM dirs; hard error when TFM unidentifiable; `resolvedTfm` in JSON output; 9 new tests |

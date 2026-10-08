@@ -21,7 +21,7 @@ Exactly one of `--filename` or `--directory` is required.
 | `--directory <path>` | `-d` | one-of | Path to a build output directory of `.dll` files to compare instead of a `.nupkg`. |
 | `--tfm <moniker>` | `-t` | no | Target framework moniker (e.g. `net8.0`); only valid with `--directory`. |
 | `--nuget <id>` | `-n` | **yes** | NuGet package ID to compare against. |
-| `--version <ver>` | `-v` | no | Version to compare against (optional; defaults to latest). |
+| `--version <ver>` | `-v` | no | Version to compare against (optional; defaults to the latest published version, prereleases included). |
 
 Plus the [global options](../README.md#global-options): `--json`, `--output`, `--no-cache`.
 
@@ -40,8 +40,33 @@ Feed DLLs are filtered to `lib/{tfm}/` for accurate matching against the resolve
 
 ## Output
 
-Cached to `<output>/reproduce/<packageId>/<version>/result.json`. Directory-mode JSON output
-includes an additional `resolvedTfm` field showing which TFM was used.
+`--filename` results are cached to
+`<output>/reproduce/<packageId>/<version>/<sha256-prefix>/result.json`, where `<version>` is the
+concrete feed version compared (resolved even when `--version` is omitted) and `<sha256-prefix>`
+is the first 16 hex characters of the local `.nupkg`'s SHA-256. A rebuilt package therefore never
+reuses a stale verdict. The JSON includes `localSha256` (full hash) and `feedVersion` (the resolved
+version). `--directory` runs are not cached; their JSON includes an additional `resolvedTfm` field
+showing which TFM was used.
+
+## Exit codes
+
+`reproduce` is designed to be used as a CI gate:
+
+| Exit | Meaning |
+|------|---------|
+| `0` | Reproducible: every matched DLL is identical and no DLL is missing on either side. |
+| `1` | Error: invalid input, feed/network failure, a DLL that could not be compared, or no matching DLLs at all (nothing was verified). |
+| `2` | Not reproducible: at least one DLL differs, or a DLL exists only in the local package or only in the feed package. |
+
+In `--directory` mode, DLLs that exist only locally are ignored for the verdict, because a build
+output directory normally also contains dependency assemblies that are not part of the package.
+DLLs the published package ships but the local build lacks still count as not reproducible.
+
+Cached results return the same exit code as the original run.
+
+```bash
+fennec reproduce -f ./artifacts/MyLib.1.0.0.nupkg -n MyLib -v 1.0.0 || exit $?
+```
 
 ## Examples
 
@@ -62,6 +87,7 @@ fennec reproduce --directory ./bin/Release --tfm net8.0 --nuget MyLib
 ## Edge cases & troubleshooting
 
 - `--tfm` supplied without `--directory` → `--tfm requires --directory.`, exits 1.
+- No DLL in the local input matches a DLL in the feed package → `No matching DLL files found to compare.`, exits 1.
 - Neither `--filename` nor `--directory` supplied → error and `--help` shown, exits 1.
 - `--nuget` is always required regardless of which local input mode is used.
 - Ambiguous/unresolvable TFM in non-interactive contexts is a hard error (see resolution rules

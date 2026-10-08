@@ -43,24 +43,30 @@ internal class ReproduceCommandHandler
             return 1;
         }
 
-        if (!noCache && version != null)
-        {
-            var cachePath = OutputCache.ReproducePath(output, packageId, version);
-            if (OutputCache.Exists(cachePath))
-            {
-                var cached = OutputCache.TryLoad(cachePath)!;
-                if (outputMode == OutputMode.Json)
-                    Console.WriteLine(cached);
-                else
-                    DllPipeline.RenderCachedResult(cached, cachePath);
-                return 0;
-            }
-        }
-
         string? tempExtractPath = null;
 
         try
         {
+            var localSha256 = await ComputeSha256Async(nupkgFilePath);
+            var resolvedVersion = await _nugetService.ResolveVersionAsync(packageId, version);
+            var cachePath = OutputCache.ReproducePath(output, packageId, resolvedVersion, localSha256);
+
+            if (!noCache && OutputCache.Exists(cachePath))
+            {
+                var cached = OutputCache.TryLoad(cachePath)!;
+                var cachedExitCode = DllPipeline.ReproduceExitCodeFromJson(cached);
+                if (outputMode == OutputMode.Json)
+                {
+                    Console.WriteLine(cached);
+                }
+                else
+                {
+                    DllPipeline.RenderCachedResult(cached, cachePath);
+                    RenderVerdict(cachedExitCode);
+                }
+                return cachedExitCode;
+            }
+
             tempExtractPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempExtractPath);
 
@@ -71,10 +77,10 @@ internal class ReproduceCommandHandler
             var localDlls = NupkgHelper.GetDlls(tempExtractPath);
 
             await StatusRunner.RunAsync(
-                outputMode, $"Downloading {packageId} {version ?? "latest"} from feed…",
-                () => _nugetService.DownloadPackageAsync(packageId, version));
+                outputMode, $"Downloading {packageId} {resolvedVersion} from feed…",
+                () => _nugetService.DownloadPackageAsync(packageId, resolvedVersion));
 
-            var feedDlls = (await _nugetService.GetPackageContentsAsync(packageId, version))
+            var feedDlls = (await _nugetService.GetPackageContentsAsync(packageId, resolvedVersion))
                 .Where(DllPipeline.IsLibraryDll)
                 .ToDictionary(f => f.Path, f => f);
 
@@ -85,17 +91,20 @@ internal class ReproduceCommandHandler
             if (matchingDlls.Count == 0)
             {
                 Console.Error.WriteLine("No matching DLL files found to compare.");
-                return 0;
+                return DllPipeline.ExitError;
             }
 
             var (dllResults, identicalCount, differentCount, errorCount) =
                 DllPipeline.CompareMatchedDlls(matchingDlls, localDlls, feedDlls);
+            var exitCode = DllPipeline.ReproduceExitCode(
+                identicalCount, differentCount, errorCount, onlyInLocal.Count, onlyInFeed.Count);
 
             var reproduceResult = new
             {
                 packageId,
                 localSource = nupkgFilePath,
-                feedVersion = version ?? "latest",
+                localSha256,
+                feedVersion = resolvedVersion,
                 perDll = dllResults.Select(DllPipeline.FormatDllResult),
                 onlyInLocal,
                 onlyInFeed,
@@ -103,24 +112,24 @@ internal class ReproduceCommandHandler
             };
             var json = JsonSerializer.Serialize(reproduceResult, Json.Options);
 
-            if (version != null)
-                await OutputCache.WriteAsync(OutputCache.ReproducePath(output, packageId, version), json);
+            await OutputCache.WriteAsync(cachePath, json);
 
             if (outputMode == OutputMode.Json)
             {
                 Console.WriteLine(json);
-                return errorCount > 0 ? 1 : 0;
+                return exitCode;
             }
 
             DiffRenderer.Render(
-                $"{Path.GetFileName(nupkgFilePath)} vs {packageId} {version ?? "latest"}",
+                $"{Path.GetFileName(nupkgFilePath)} vs {packageId} {resolvedVersion}",
                 dllResults,
                 onlyInLocal,
                 onlyInFeed,
                 "local",
                 "feed");
+            RenderVerdict(exitCode);
 
-            return errorCount > 0 ? 1 : 0;
+            return exitCode;
         }
         catch (Exception ex)
         {
@@ -159,10 +168,11 @@ internal class ReproduceCommandHandler
         foreach (var kv in rawLocalDlls)
             localByName[Path.GetFileName(kv.Key)] = kv.Value;
 
+        var resolvedVersion = await _nugetService.ResolveVersionAsync(packageId, version);
         var allFeedContents = await StatusRunner.RunAsync(
             outputMode,
-            $"Downloading {packageId} {version ?? "latest"} from feed…",
-            async () => (await _nugetService.GetPackageContentsAsync(packageId, version))
+            $"Downloading {packageId} {resolvedVersion} from feed…",
+            async () => (await _nugetService.GetPackageContentsAsync(packageId, resolvedVersion))
                 .Where(DllPipeline.IsLibraryDll)
                 .ToList());
 
@@ -181,18 +191,22 @@ internal class ReproduceCommandHandler
         if (matchingNames.Count == 0)
         {
             Console.Error.WriteLine("No matching DLL files found to compare.");
-            return 0;
+            return DllPipeline.ExitError;
         }
 
         var (dllResults, identicalCount, differentCount, errorCount) =
             DllPipeline.CompareMatchedDlls(matchingNames, localByName, feedByName);
+        // A build output directory also holds dependency DLLs that are not part of the package,
+        // so only DLLs the package ships but the local build lacks count against reproducibility.
+        var exitCode = DllPipeline.ReproduceExitCode(
+            identicalCount, differentCount, errorCount, onlyInLocal: 0, onlyInFeed.Count);
 
         var reproduceResult = new
         {
             packageId,
             localSource = resolvedDir,
             resolvedTfm,
-            feedVersion = version ?? "latest",
+            feedVersion = resolvedVersion,
             perDll = dllResults.Select(DllPipeline.FormatDllResult),
             onlyInLocal,
             onlyInFeed,
@@ -203,18 +217,19 @@ internal class ReproduceCommandHandler
         if (outputMode == OutputMode.Json)
         {
             Console.WriteLine(json);
-            return errorCount > 0 ? 1 : 0;
+            return exitCode;
         }
 
         DiffRenderer.Render(
-            $"{resolvedDir} vs {packageId} {version ?? "latest"}",
+            $"{resolvedDir} vs {packageId} {resolvedVersion}",
             dllResults,
             onlyInLocal,
             onlyInFeed,
             "local",
             "feed");
+        RenderVerdict(exitCode);
 
-        return errorCount > 0 ? 1 : 0;
+        return exitCode;
     }
 
     internal static (string resolvedDir, string? resolvedTfm, string? error) ResolveTfmDirectory(
@@ -275,4 +290,20 @@ internal class ReproduceCommandHandler
         return result;
     }
 
+    private static void RenderVerdict(int exitCode)
+    {
+        AnsiConsole.MarkupLine(exitCode switch
+        {
+            DllPipeline.ExitReproducible => "[green]✓ Reproducible[/]",
+            DllPipeline.ExitNotReproducible => "[red]✗ Not reproducible[/] [dim](exit code 2)[/]",
+            _ => "[red]✗ Verification incomplete: some DLLs could not be compared[/] [dim](exit code 1)[/]",
+        });
+    }
+
+    internal static async Task<string> ComputeSha256Async(string path)
+    {
+        await using var stream = File.OpenRead(path);
+        var hash = await System.Security.Cryptography.SHA256.HashDataAsync(stream);
+        return Convert.ToHexStringLower(hash);
+    }
 }

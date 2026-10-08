@@ -73,7 +73,7 @@ internal class CompareCommandHandler
                     Console.WriteLine(cached);
                 else
                     DllPipeline.RenderCachedResult(cached, cachePath);
-                return 0;
+                return DllPipeline.CompareExitCodeFromJson(cached);
             }
 
             await StatusRunner.RunAsync(

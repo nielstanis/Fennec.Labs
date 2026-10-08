@@ -5,8 +5,9 @@ internal static class OutputCache
     internal static string ComparePath(string root, string packageId, string current, string previous) =>
         Path.Combine(root, "compare", packageId, $"{current}-vs-{previous}", "result.json");
 
-    internal static string ReproducePath(string root, string packageId, string version) =>
-        Path.Combine(root, "reproduce", packageId, version, "result.json");
+    // Keyed on the local artifact's hash so a rebuilt package never reuses a stale verdict.
+    internal static string ReproducePath(string root, string packageId, string version, string localSha256) =>
+        Path.Combine(root, "reproduce", packageId, version, localSha256[..16], "result.json");
 
     internal static string ScorecardDir(string root, string projectName, string timestamp) =>
         Path.Combine(root, "scorecard", projectName, timestamp);

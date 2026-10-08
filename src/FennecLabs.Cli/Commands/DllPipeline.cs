@@ -74,6 +74,61 @@ internal static class DllPipeline
         error = d.Error,
     };
 
+    internal const int ExitReproducible = 0;
+    internal const int ExitError = 1;
+    internal const int ExitNotReproducible = 2;
+
+    /// <summary>
+    /// Verdict exit code for <c>reproduce</c>: 1 on errors or when nothing could be compared,
+    /// 2 when any DLL differs or exists on one side only, otherwise 0.
+    /// </summary>
+    internal static int ReproduceExitCode(
+        int identical, int different, int errors, int onlyInLocal, int onlyInFeed)
+    {
+        if (errors > 0 || identical + different == 0)
+            return ExitError;
+        if (different > 0 || onlyInLocal > 0 || onlyInFeed > 0)
+            return ExitNotReproducible;
+        return ExitReproducible;
+    }
+
+    /// <summary>Recomputes the <c>reproduce</c> exit code from a cached result.json.</summary>
+    internal static int ReproduceExitCodeFromJson(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var summary = root.GetProperty("summary");
+            return ReproduceExitCode(
+                summary.GetProperty("identical").GetInt32(),
+                summary.GetProperty("different").GetInt32(),
+                summary.GetProperty("errors").GetInt32(),
+                root.GetProperty("onlyInLocal").GetArrayLength(),
+                root.GetProperty("onlyInFeed").GetArrayLength());
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or KeyNotFoundException
+                                       or InvalidOperationException)
+        {
+            return ExitError;
+        }
+    }
+
+    /// <summary>Exit code for a cached <c>compare</c> result: 1 when the cached summary has errors.</summary>
+    internal static int CompareExitCodeFromJson(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            return doc.RootElement.GetProperty("summary").GetProperty("errors").GetInt32() > 0 ? 1 : 0;
+        }
+        catch (Exception ex) when (ex is System.Text.Json.JsonException or KeyNotFoundException
+                                       or InvalidOperationException)
+        {
+            return 1;
+        }
+    }
+
     internal static void RenderCachedResult(string json, string cachePath)
     {
         AnsiConsole.MarkupLine($"[dim](cached)[/] {Markup.Escape(cachePath)}");

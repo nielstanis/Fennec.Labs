@@ -11,7 +11,7 @@ for most commands, and can emit the same data as JSON to stdout via `--json`.
 | `instrument` (NuGet) | `<output>/instrument/<packageId>/<resolvedVersion>/` |
 | `compare` (`--nuget`) | `<output>/compare/<packageId>/<current>-vs-<previous>/result.json` |
 | `compare` (`--file`) | not cached — stdout only |
-| `reproduce` | `<output>/reproduce/<packageId>/<version>/result.json` |
+| `reproduce` | `<output>/reproduce/<packageId>/<version>/<sha256-prefix>/result.json` (`--filename` only; `<sha256-prefix>` = first 16 hex chars of the local `.nupkg` SHA-256) |
 | `scorecard` | `<output>/scorecard/<projectName>/<timestamp>/result.json` (+ `report.html`/`report.md`) |
 | `dependencies` | `<output>/dependencies/<projectName>/<timestamp>/result.json` |
 | `feeds` | none — feed config is stored separately from `.fennec/` |

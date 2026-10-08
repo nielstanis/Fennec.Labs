@@ -12,8 +12,17 @@ public class OutputCacheTests
     [Fact]
     public void ReproducePath_BuildsCorrectPath()
     {
-        var expected = Path.Combine(".fennec", "reproduce", "Polly", "8.0.0", "result.json");
-        Assert.Equal(expected, OutputCache.ReproducePath(".fennec", "Polly", "8.0.0"));
+        var sha = new string('a', 16) + new string('b', 48);
+        var expected = Path.Combine(".fennec", "reproduce", "Polly", "8.0.0", new string('a', 16), "result.json");
+        Assert.Equal(expected, OutputCache.ReproducePath(".fennec", "Polly", "8.0.0", sha));
+    }
+
+    [Fact]
+    public void ReproducePath_DifferentLocalArtifacts_GetDifferentPaths()
+    {
+        var path1 = OutputCache.ReproducePath(".fennec", "Polly", "8.0.0", new string('1', 64));
+        var path2 = OutputCache.ReproducePath(".fennec", "Polly", "8.0.0", new string('2', 64));
+        Assert.NotEqual(path1, path2);
     }
 
     [Fact]
